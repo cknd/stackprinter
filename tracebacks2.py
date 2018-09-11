@@ -1,8 +1,8 @@
 import sys
 import inspect
 import tokenize
-from collections import deque, defaultdict
 from keyword import kwlist
+from collections import deque, defaultdict
 from io import BytesIO
 
 class UndefinedName(KeyError):
@@ -14,26 +14,12 @@ class TTCore():
     def __init__(self, source_context=5, get_vals='context',
                  show_signature=True):
         """
+        TODO
+
+
         Params
         ---
-
-        source_context : int or 'frame'
-            nr of source lines around the last executed line to show:
-            0: don't get any source lines
-            1: only get the final executed line
-            >1: get several lines around the final line
-            'frame': get the complete source of each frame
-
-        get_vals : string 'frame' | 'context' | 'line' | None
-            Selects which variable assignments to retrieve:
-            'frame': get values of all names in the frame's source
-            'context': ...only those in the chosen source context
-            'line': ...only those in the last executed line ('-->')
-            None|False: don't retrieve any variable values.
-
-        show_signature : bool
-            only if source_context > 1: always include the first source line,
-            (unless the frame is at the module top level).
+        see StringFormatter
         """
 
         self.n_context = source_context
@@ -117,7 +103,7 @@ class TTCore():
             tb = tb.tb_next
 
     def process_source(self, source_lines):
-        # Override to see & modify the complete source of each frame,
+        # Override to inspect / modify the complete source of each frame,
         # e.g. to implement syntax highlighting.
         return source_lines
 
@@ -135,7 +121,23 @@ class StringFormatter(TTCore):
         Params
         ---
 
-            TODO copy from TTCore
+        source_context : int or 'frame'
+            nr of source lines around the last executed line to show:
+            0: don't show any source lines
+            1: only show the final executed line of each frame (the '-->' line)
+            >1: show several lines around the final line
+            'frame': show the complete source of each frame
+
+        get_vals : string 'frame' | 'context' | 'line' | None
+            Selects which variable assignments to show:
+            'frame': show values of all variables in each frame's source
+            'context': ...only those in the source context (as chosen above)
+            'line': ...only those in the final line of each frame ('-->')
+            None|False: don't retrieve any variable values.
+
+        show_signature : bool
+            only if source_context > 1: always show the first source line,
+            (unless the frame is at the module top level).
 
         summary_above : bool
             TODO
