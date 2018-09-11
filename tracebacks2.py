@@ -26,6 +26,37 @@ class TTCore():
         self.get_vals = get_vals
         self.show_signature = show_signature
 
+    def _define_context(self, startline, endline):
+        if self.n_context == 'frame':
+            lines_shown = range(startline, endline)
+        elif self.n_context == 0:
+            lines_shown = []
+        elif self.n_context == 1:
+            lines_shown = [lineno]
+        elif self.n_context > 1:
+            start = max(lineno - (self.n_context - 1), 0)
+            stop = lineno + 1
+            lines_shown = list(range(start, stop+1))
+            if show_signature and name != '<module>' and start > startline:
+                # TODO do the right thing for multiline signatures
+                lines_shown = [startline] + lines_shown
+        else:
+            raise ValueError('source_context %s' % self.n_context)
+
+    def get_vars(self, source, line_offset, linenrs, loc, glob):
+        assignments = []
+        names_in_line = get_name_map(source, line_offset, linenrs)
+        for lno in linenrs:
+            for name in names_in_line[lno]:
+                try:
+                    val = lookup(name, loc, glob)
+                except Exception as e:
+                    print(name, e.__class__.__name__, e)
+                    pass
+                else:
+                    assignments.append((name, val))
+        return assignment
+
     def walk_tb(self, tb):
         """
         Follow the call stack, collecting source lines & variable values
@@ -59,51 +90,30 @@ class TTCore():
             finfo = inspect.getframeinfo(frame)
             filename, function = finfo.filename, finfo.function
             source, startline = get_source(frame)
+            endline = startline + len(source)
+            lines_shown = self._define_context(startline, endline)
 
-            if self.n_context == 'frame':
-                visible_linenrs = range(startline, startline+len(source))
-            elif self.n_context == 0:
-                visible_linenrs = []
-            elif self.n_context == 1:
-                visible_linenrs = [lineno]
-            elif self.n_context > 1:
-                start = max(lineno - (self.n_context - 1), 0)
-                stop = lineno + 1
-                visible_linenrs = list(range(start, stop+1))
-                if show_signature and name != '<module>' and start > startline:
-                    # TODO do the right thing for multiline signatures
-                    visible_linenrs = [startline] + visible_linenrs
+            if not self.get_vals:
+                assignments = []
             else:
-                raise ValueError('source_context %s' % self.n_context)
-
-            assignments = []
-            if get_vals:
-                if get_vals == 'frame':
-                    val_linenrs = range(startline, startline+len(source))
-                elif get_vals == 'context':
-                    val_linenrs = visible_linenrs
-                elif get_vals == 'line':
+                if self.get_vals == 'frame':
+                    val_linenrs = range(startline, endline)
+                elif self.get_vals == 'context':
+                    val_linenrs = lines_shown
+                elif self.get_vals == 'line':
                     val_linenrs = [lineno]
 
-                names_in_line = get_name_map(source, startline, val_linenrs)
-                for lno in val_linenrs:
-                    for name in names_in_line[lno]:
-                        try:
-                            val = lookup(name, frame.f_locals, frame.f_globals)
-                        except Exception as e:
-                            print(name, e.__class__.__name__, e)
-                            pass
-                        else:
-                            assignments.append((name, val))
+                assignments = self.get_vars(source, startline, val_linenrs,
+                                            frame.f_locals, frame.f_globals)
 
             source_prc = self.process_source(source)
-            source_lines = [(lno, source_prc[lno]) for lno in visible_linenrs]
+            source_lines = [(lno, source_prc[lno]) for lno in lines_shown]
 
             yield (filename, function, lineno, source_lines, assignments)
             tb = tb.tb_next
 
     def process_source(self, source_lines):
-        # Override to inspect / modify the complete source of each frame,
+        # Override to modify the complete source of each frame,
         # e.g. to implement syntax highlighting.
         return source_lines
 
@@ -112,7 +122,7 @@ class StringFormatter(TTCore):
     headline_tpl = "File %s, line %s in %s\n"
     sourceline_tpl = "%s%-3s %s"
     vars_separator = "    %s\n" % ('.' * 50)
-    var_indent = "\n        "
+    var_indent = "        "
     assignment_tpl = var_indent + "%s = %s\n"
 
     def __init__(self, source_context=5, get_vals='context', show_signature=True,
