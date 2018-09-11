@@ -18,21 +18,21 @@ class TTCore():
         ---
 
         source_context : int or 'frame'
-            nr of source lines around the last executed line to show
+            nr of source lines around the last executed line to show:
             0: don't get any source lines
             1: only get the final executed line
             >1: get several lines around the final line
             'frame': get the complete source of each frame
 
         get_vals : string 'frame' | 'context' | 'line' | None
-            Selects which variable assignments to retrieve.
-            'frame': get values of all names in the source of the frame.
-            'context': ...only for names visible in the chosen source context
-            'line': ...only for names in the last executed line ('-->')
+            Selects which variable assignments to retrieve:
+            'frame': get values of all names in the frame's source
+            'context': ...only those in the chosen source context
+            'line': ...only those in the last executed line ('-->')
             None|False: don't retrieve any variable values.
 
         show_signature : bool
-            only if source_context > 1: always include the first line of code,
+            only if source_context > 1: always include the first source line,
             (unless the frame is at the module top level).
         """
 
@@ -42,12 +42,13 @@ class TTCore():
 
     def walk_tb(self, tb):
         """
-        Follow the call stack to the bottom, grab source lines & variable values
+        Follow the call stack, collecting source lines & variable values
 
 
         Params
         ---
         tb: traceback object
+
 
         Yields
         ---
@@ -65,7 +66,6 @@ class TTCore():
         source_lines: list of tuples (line nr, source line)
 
         assignments: list of tuples (name, value)
-
         """
         while tb:
             frame = tb.tb_frame
@@ -75,32 +75,32 @@ class TTCore():
             source, startline = get_source(frame)
 
             if self.n_context == 'frame':
-                visible_lines = range(startline, startline+len(source))
+                visible_linenrs = range(startline, startline+len(source))
             elif self.n_context == 0:
-                visible_lines = []
+                visible_linenrs = []
             elif self.n_context == 1:
-                visible_lines = [lineno]
+                visible_linenrs = [lineno]
             elif self.n_context > 1:
                 start = max(lineno - (self.n_context - 1), 0)
                 stop = lineno + 1
-                visible_lines = list(range(start, stop+1))
+                visible_linenrs = list(range(start, stop+1))
                 if show_signature and name != '<module>' and start > startline:
                     # TODO do the right thing for multiline signatures
-                    visible_lines = [startline] + visible_lines
+                    visible_linenrs = [startline] + visible_linenrs
             else:
-                raise ValueError('cant read self.n_context=%s' % self.n_context)
+                raise ValueError('source_context %s' % self.n_context)
 
             assignments = []
             if get_vals:
                 if get_vals == 'frame':
-                    val_lines = range(startline, startline+len(source))
+                    val_linenrs = range(startline, startline+len(source))
                 elif get_vals == 'context':
-                    val_lines = visible_lines
+                    val_linenrs = visible_linenrs
                 elif get_vals == 'line':
-                    val_lines = [lineno]
+                    val_linenrs = [lineno]
 
-                names_in_line = get_name_map(source, startline, val_lines)
-                for lno in val_lines:
+                names_in_line = get_name_map(source, startline, val_linenrs)
+                for lno in val_linenrs:
                     for name in names_in_line[lno]:
                         try:
                             val = lookup(name, frame.f_locals, frame.f_globals)
@@ -110,39 +110,56 @@ class TTCore():
                         else:
                             assignments.append((name, val))
 
-            source_pr = self.process_source(source)
-            source_lines = [(lno, source_pr[lno]) for lno in visible_lines]
+            source_prc = self.process_source(source)
+            source_lines = [(lno, source_prc[lno]) for lno in visible_linenrs]
 
             yield (filename, function, lineno, source_lines, assignments)
             tb = tb.tb_next
 
     def process_source(self, source_lines):
-        # Override in subclasses that need to see & modify the complete source
-        # of the frame, e.g. to implement syntax highlighting.
+        # Override to see & modify the complete source of each frame,
+        # e.g. to implement syntax highlighting.
         return source_lines
 
 
-class StringTB(TTCore):
+class StringFormatter(TTCore):
     headline_tpl = "File %s, line %s in %s\n"
     sourceline_tpl = "%s%-3s %s"
     vars_separator = "    %s\n" % ('.' * 50)
-    var_indent =     "\n        "
+    var_indent = "\n        "
     assignment_tpl = var_indent + "%s = %s\n"
 
-    def __init__(self, source_context=5, get_vals='context', show_signature=True):
+    def __init__(self, source_context=5, get_vals='context', show_signature=True,
+                 summary_above=False, truncate_vals=500):
+        """
+        Params
+        ---
 
-    def excepthook(*args):
+            TODO copy from TTCore
+
+        summary_above : bool
+            TODO
+
+        truncate_vals : int or False
+            cut string representations of variable values to this maximum length
+
+        """
+        super().__init__(source_context, get_vals, show_signature)
+        self.summary_above = summary_above
+        self.truncate_vals = truncate_vals
+
+    def excepthook(self, *args):
         tb_string = self.format(*args)
         print(tb_string, file=sys.stderr)
 
 
-    def format(etype, evalue, tb, summary_above=False):
+    def format(self, etype, evalue, tb):
         exc_str = ' '.join(traceback.format_exception_only(etype, evalue))
         frame_strings = self.get_frame_strings(tb, source_context,
                                                get_vals, show_signature)
 
         msg = ''
-        if summary_above:
+        if self.summary_above:
             lastframe = tb_strings[-1]
             msg = "%s\n%s\n" % (exc_str, lastframe)
         msg +=  "============= Full traceback: ===========\n\n"
@@ -150,7 +167,7 @@ class StringTB(TTCore):
         msg += exc_str
 
 
-    def get_frame_strings(etype, evalue, tb, *args, **kwargs):
+    def get_frame_strings(self, etype, evalue, tb, *args, **kwargs):
         frame_strings = []
         frame_infos = walk_tb(tb, *args, **kwargs)
         for fname, function, lineno, source_lines, assignments in frame_infos:
@@ -167,7 +184,6 @@ class StringTB(TTCore):
 
         return frame_strings
 
-
     def format_source(self, source_lines, lineno):
         msg = ""
         ln_prev = None
@@ -179,7 +195,7 @@ class StringTB(TTCore):
             msg += self.sourceline_tpl % (marker, ln, line)
         return msg
 
-    def format_vars(self, assignments, truncate=500, truncate__=True):
+    def format_vars(self, assignments):
         for name, value in assignments:
             if isinstance(value, str):
                 val_str = value
@@ -194,29 +210,27 @@ class StringTB(TTCore):
                 except:
                     val_str = "<error calling str>"
 
-            if truncate and len(val_str) > truncate:
-                val_str = "%s..." % val_str[:truncate]
-            if truncate__ and name.startswith('__') and len(val_str) > 50:
-                val_str = "%s..." % val_str[:50]
+            if self.truncate_vals and len(val_str) > self.truncate_vals:
+                val_str = "%s..." % string[:self.truncate_vals]
 
-            # ad hoc trickery to match up multiline reprs on the = sign
+            # ad hoc hack to match up multiline reprs to the = sign:
             indented_newline = '\n' + self.var_indent + (' ' * (len(name) + 2))
             val_str = val_str.replace('\n', indented_newline)
 
             msg += self.assignment_tpl % (name, val_str)
+
         return msg
 
 
-
 class ColorTB(StringTB):
-    header_tpl = "%s "  #colored version
+    header_tpl = "%s... "  #TODO colored version
 
     def process_source(self, source_lines):
         # do syntax highlighting
         pass
 
 
-class PickleTB(TBFormat):
+class PickleTB(TTCore):
     pass
 
 
