@@ -14,7 +14,8 @@ if __name__ == '__main__':
         # very long function
         # with many lines
         # and various weird variables
-        X = np.zeros((5, 5))
+        X = np.zeros((5,5))
+        Y = np.array(0)
         scoped = outer_scope_thing
         np.reshape(X,9000)
         X[0] = len(thing)

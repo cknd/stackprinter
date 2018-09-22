@@ -1,17 +1,20 @@
 import sys
-import inspect
 import traceback
-import tokenize
+import textwrap
 from keyword import kwlist
 from collections import deque, defaultdict
 from io import BytesIO
 from extraction import walk_tb, FrameInfo
-
+try:
+    import numpy as np
+except ImportError:
+    np = False
 
 class FrameFormatter():
-    headline_tpl = "File %s, line %s in %s\n"
-    sourceline_tpl = "%s%-4s %s"
-    vars_separator = "    %s\n" % ('.' * 50)
+    headline_tpl = "\n\nFile %s in %s Line %s\n"
+    sourceline_tpl = "%s%-3s %s"
+    sep_vars = "    %s\n" % ('.' * 50)
+    sep_source_below = ""
     var_indent = "        "
     assignment_tpl = var_indent + "%s = %s\n"
 
@@ -65,7 +68,7 @@ class FrameFormatter():
             raise ValueError("Expected a FrameInfo tuple. "\
                             "extraction.inspect_tb() makes those.")
 
-        msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
+        msg = self.headline_tpl % (fi.filename, fi.function, fi.lineno)
         first_ln, last_ln = fi.source[0][0], fi.source[-1][0]
         lines_shown = self.select_visible_lines(first_ln, last_ln, fi.lineno,
                                                 fi.function == '<module>')
@@ -80,10 +83,9 @@ class FrameFormatter():
                 val_lines = lines_shown
             elif self.show_vals == 'line':
                 val_lines = [lineno]
-            msg += self.vars_separator
+            msg += self.sep_vars
             msg += self.format_vars(fi.assignments, val_lines, fi.name_map)
-            msg += self.vars_separator
-            msg += '\n'
+            msg += self.sep_vars
         return msg
 
     def select_visible_lines(self, minl, maxl, lineno, is_module=False):
@@ -94,7 +96,6 @@ class FrameFormatter():
         elif self.source_context == 1:
             return [lineno]
         elif self.source_context > 1:
-            # import pdb; pdb.set_trace()
             start = max(lineno - (self.source_context - 1), 0)
             stop = lineno + 1
             start = max(start, minl)
@@ -105,25 +106,46 @@ class FrameFormatter():
                 # TODO do the right thing for multiline signatures
             return lines_shown
 
-    def format_source(self, source_lines, lines_shown, lineno, name_map=None):
+    def format_source(self, source_lines, nrs_shown, lineno, name_map=None):
         source_lines = self.highlight(source_lines, name_map)
         source_map = dict(source_lines)
+        lines = self.trim_whitespace([source_map[ln] for ln in nrs_shown])
         msg = ""
         ln_prev = None
-        n_visible = len(lines_shown)
-        for ln in lines_shown:
+        n_visible = len(nrs_shown)
+        for ln, line in zip(nrs_shown, lines):
             if ln_prev and ln_prev != ln - 1:
                 msg += "(...)\n"
             ln_prev = ln
-            do_marker = (ln == lineno and n_visible > 1)
-            marker = '--> ' if do_marker else '    '
-            msg += self.sourceline_tpl % (marker, ln, source_map[ln])
+
+            if n_visible > 1:
+                if ln == lineno:
+                    marker = '--> '
+                else:
+                    marker = '    '
+                msg += self.sourceline_tpl % (marker, ln, line)
+            else:
+                msg += self.sourceline_tpl % ('', '', line)
+
+
+        msg += self.sep_source_below
         return msg
 
     def highlight(self, source_lines, name_map):
         # do syntax highlighing, or color the names in a color cycle based on
         # order of appearance (synchronized with colors in vars below)
         return source_lines
+
+    def trim_whitespace(self, lines):
+        min_padding = 9000
+        for line in lines:
+            line = line.replace('\t', '    ')
+            n_nonwhite = len(line.lstrip())
+            if n_nonwhite > 0:
+                leading_spaces = len(line) - n_nonwhite
+                min_padding = min(leading_spaces, min_padding)
+        pad = ' ' * min_padding
+        return [line.replace(pad, '', 1) for line in lines]
 
     def format_vars(self, assignments, visible_lines, name_map=None):
 
@@ -138,9 +160,11 @@ class FrameFormatter():
             if occurrences.intersection(visible_lines):
                 if isinstance(value, str):
                     val_str = value
+                if np and isinstance(value, np.ndarray):
+                    val_str = self.format_array(value)
                 elif hasattr(value, '__repr__'):
                     try:
-                        val_str = value.__repr__()
+                        val_str = repr(value)
                     except:
                         val_str = "<error calling __repr__>"
                 else:
@@ -152,14 +176,31 @@ class FrameFormatter():
                 if self.truncate_vals and len(val_str) > (self.truncate_vals+3):
                     val_str = "%s..." % val_str[:self.truncate_vals]
 
-                indented_newline = '\n' + self.var_indent + (' ' * (len(name) + 2))
+                indented_newline = '\n' + self.var_indent + (' ' * (len(name) + 3))
                 val_str = val_str.replace('\n', indented_newline)
                 msg += self.assignment_tpl % (name, val_str)
         return msg
 
+    def format_array(self, arr):
+        if arr.ndim >= 1:
+            shape_str = "x".join(str(d) for d in arr.shape)
+            if len(shape_str) < 10:
+                prefix = shape_str + " array("
+                msg = prefix
+            else:
+                prefix = ""
+                msg = shape_str + " array(\n"
+        else:
+            msg = prefix = "array("
+
+        suffix = ')'
+        msg += np.array2string(arr, max_line_width=70, separator=',',
+                               prefix=prefix, suffix=suffix)
+        msg += suffix
+        return msg
+
 
 class InsanelyVerboseFormatter(FrameFormatter):
-    # header, source and vals for the whole frame
     def __init__(self):
         super().__init__(source_context='frame', truncate_vals=10000)
 
@@ -170,11 +211,12 @@ class VerboseFormatter(FrameFormatter):
 
 class TerseFormatter(FrameFormatter):
     # header, 1 line of source, vals for that one line
+    headline_tpl = "File %s in %s Line %s\n"
     def __init__(self):
         super().__init__(source_context=1, truncate_vals=70)
 
 class MinimalFormatter(FrameFormatter):
-    # header, 1 line of source, no vals
+    headline_tpl = "File %s in %s Line %s\n"
     def __init__(self):
         super().__init__(source_context=1, show_vals=False)
 
@@ -194,16 +236,16 @@ def format_tb(frameinfos, formatter=None, reverse_order=False):
     tb_strings = [formatter.show_frame(fi) for fi in frameinfos]
     if reverse_order:
         tb_strings = reversed(tb_strings)
-    return "\n\n".join(tb_strings)
+    return "".join(tb_strings)
 
 
-def format_summary(frameinfos, message='', reverse_order=False):
+def format_summary(frameinfos, reverse_order=False):
     msg_inner = format_tb(frameinfos[-1], TerseFormatter(), reverse_order)
     msg_outer = format_tb(frameinfos[:-1], MinimalFormatter(), reverse_order)
-    msg = [msg_outer, msg_inner, message]
+    msg = [msg_outer, msg_inner]
     if reverse_order:
         msg = reversed(msg)
-    return "\n".join(msg)
+    return "".join(msg)
 
 
 def format(etype, evalue, tb, show_full=True, show_summary=True,
@@ -213,55 +255,21 @@ def format(etype, evalue, tb, show_full=True, show_summary=True,
     exception_msg = ' '.join(traceback.format_exception_only(etype, evalue))
 
     if show_summary:
-        msg = format_summary(frameinfos, exception_msg, reverse_order)
+        msg = format_summary(frameinfos, reverse_order)
+        msg += exception_msg
+
     else:
         msg = ''
 
     if show_full:
         if show_summary:
-            msg += "\n\n========== Full traceback: ==========\n\n"
+            msg += "\n\n========== Full traceback: ==========\n"
         formatter = VerboseFormatter(**formatter_kwargs)
-        msg = format_tb(frameinfos, formatter, reverse_order)
+        msg += format_tb(frameinfos, formatter, reverse_order)
         msg += exception_msg
-
     return msg
 
 
 def excepthook(etype, evalue, tb, **kwargs):
     tb_message = format(etype, evalue, tb, **kwargs)
     print(tb_message, file=sys.stderr)
-
-
-if __name__ == '__main__':
-    import sys
-    # from tracebacks2 import format
-    import numpy as np
-
-
-    outer_scope_thing = ".oOo."
-
-    def a_broken_function(thing, otherthing=1234):
-        # very long function
-        # with many lines
-        # and various weird variables
-        X = np.zeros((5, 5))
-        scoped = outer_scope_thing
-        np.reshape(X,9000)
-        X[0] = len(thing)
-        for k in X:
-            if np.sum(k) != 0:
-                raise Exception('something happened')
-                # more code:
-                zup = 123
-
-    def some_function(boing, zap='!'):
-        thing = boing + zap
-        a_broken_function(thing)
-
-    # some_function("hello")
-    try:
-        some_function("hello")
-    except:
-        tb_string = format(*sys.exc_info())
-        # print(tb_string)
-
