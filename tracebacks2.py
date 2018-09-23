@@ -17,7 +17,7 @@ if __name__ == '__main__':
         X = np.zeros((5,5))
         Y = np.array(0)
         scoped = outer_scope_thing
-        np.reshape(X,9000)
+        # np.reshape(X,9000)
         X[0] = len(thing)
         for k in X:
             if np.sum(k) != 0:

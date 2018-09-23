@@ -2,7 +2,7 @@ import sys
 import traceback
 import textwrap
 from keyword import kwlist
-from collections import deque, defaultdict
+from collections import deque, defaultdict, OrderedDict
 from io import BytesIO
 from extraction import walk_tb, FrameInfo
 try:
@@ -10,13 +10,26 @@ try:
 except ImportError:
     np = False
 
+
+import colorsys
+import random
+
+def get_ansi_color_tpl(r=1.0, g=1.0, b=1.0):
+    r = int(round(r*5))
+    g = int(round(g*5))
+    b = int(round(b*5))
+    point = 16 + 36 * r + 6 * g + b
+    code_tpl = ('\u001b[38;5;%dm' % point) + '%s\u001b[0m'
+    return code_tpl
+
+
 class FrameFormatter():
     headline_tpl = "\n\nFile %s in %s Line %s\n"
     sourceline_tpl = "%s%-3s %s"
     sep_vars = "    %s\n" % ('.' * 50)
     sep_source_below = ""
     var_indent = "        "
-    assignment_tpl = var_indent + "%s = %s\n"
+    val_tpl = var_indent + "%s = %s\n"
 
     def __init__(self, source_context=5, show_signature=True,
                  show_vals='context', truncate_vals=500):
@@ -63,123 +76,125 @@ class FrameFormatter():
         if show_vals not in valid_gv:
             raise ValueError("show_vals must be one of %s" % str(valid_gv))
 
-    def show_frame(self, fi):
+
+    def format_frame(self, fi):
         if not isinstance(fi, FrameInfo):
             raise ValueError("Expected a FrameInfo tuple. "\
-                            "extraction.inspect_tb() makes those.")
+                             "extraction.inspect_tb() makes those.")
 
         msg = self.headline_tpl % (fi.filename, fi.function, fi.lineno)
-        first_ln, last_ln = fi.source[0][0], fi.source[-1][0]
-        lines_shown = self.select_visible_lines(first_ln, last_ln, fi.lineno,
-                                                fi.function == '<module>')
+        source_context, val_context = self.select_visible_lines(fi)
 
-        if lines_shown:
-            msg += self.format_source(fi.source, lines_shown, fi.lineno, fi.name_map)
+        source_map = self.process_source(fi, source_context)
 
-        if self.show_vals:
-            if self.show_vals == 'frame':
-                val_lines = range(first_ln, last_ln)
-            elif self.show_vals == 'context':
-                val_lines = lines_shown
-            elif self.show_vals == 'line':
-                val_lines = [lineno]
+        if source_context:
+            msg += self.format_source(source_map, fi.lineno, source_context)
+
+        if val_context:
             msg += self.sep_vars
-            msg += self.format_vars(fi.assignments, val_lines, fi.name_map)
+            msg += self.format_vars(fi.assignments, fi.name_map,
+                                    fi.lineno, val_context)
             msg += self.sep_vars
+
         return msg
 
-    def select_visible_lines(self, minl, maxl, lineno, is_module=False):
+    def select_visible_lines(self, fi):
+        minl, maxl = min(fi.source_map), max(fi.source_map)
+        lineno = fi.lineno
+        is_module = (fi.function == '<module>')
+
         if self.source_context == 'frame':
-            return range(minl, maxl)
+            source_lines = range(minl, maxl)
         elif self.source_context == 0:
-            return []
+            source_lines = []
         elif self.source_context == 1:
-            return [lineno]
+            source_lines = [lineno]
         elif self.source_context > 1:
             start = max(lineno - (self.source_context - 1), 0)
             stop = lineno + 1
             start = max(start, minl)
             stop = min(stop, maxl)
-            lines_shown = list(range(start, stop+1))
+            source_lines = list(range(start, stop+1))
             if self.show_signature and not is_module and start > minl:
-                lines_shown = [minl] + lines_shown
+                source_lines = [minl] + source_lines
                 # TODO do the right thing for multiline signatures
-            return lines_shown
+            source_lines = source_lines
 
-    def format_source(self, source_lines, nrs_shown, lineno, name_map=None):
-        source_lines = self.highlight(source_lines, name_map)
-        source_map = dict(source_lines)
-        lines = self.trim_whitespace([source_map[ln] for ln in nrs_shown])
+        if self.show_vals:
+            if self.show_vals == 'frame':
+                val_lines = range(minl, maxl)
+            elif self.show_vals == 'context':
+                val_lines = source_lines
+            elif self.show_vals == 'line':
+                val_lines = [lineno]
+        else:
+            val_lines = []
+        return source_lines, val_lines
+
+    def process_source(self, fi, context):
+        return fi.source_map
+
+    def format_source(self, source_map, lineno, context):
+        lines = [source_map[ln] for ln in context]
+        lines = self.trim_whitespace(lines)
+
         msg = ""
         ln_prev = None
-        n_visible = len(nrs_shown)
-        for ln, line in zip(nrs_shown, lines):
+        n_context = len(context)
+        for ln, line in zip(context, lines):
             if ln_prev and ln_prev != ln - 1:
                 msg += "(...)\n"
             ln_prev = ln
-
-            if n_visible > 1:
+            if n_context > 1:
                 if ln == lineno:
                     marker = '--> '
                 else:
                     marker = '    '
-                msg += self.sourceline_tpl % (marker, ln, line)
             else:
-                msg += self.sourceline_tpl % ('', '', line)
-
-
+                marker = ''
+            msg += self.sourceline_tpl % (marker, ln, line)
         msg += self.sep_source_below
         return msg
 
-    def highlight(self, source_lines, name_map):
-        # do syntax highlighing, or color the names in a color cycle based on
-        # order of appearance (synchronized with colors in vars below)
-        return source_lines
-
-    def trim_whitespace(self, lines):
-        min_padding = 9000
-        for line in lines:
-            line = line.replace('\t', '    ')
-            n_nonwhite = len(line.lstrip())
-            if n_nonwhite > 0:
-                leading_spaces = len(line) - n_nonwhite
-                min_padding = min(leading_spaces, min_padding)
-        pad = ' ' * min_padding
-        return [line.replace(pad, '', 1) for line in lines]
-
-    def format_vars(self, assignments, visible_lines, name_map=None):
-
-        visible_lines = set(visible_lines)
-
-        msg = ''
-        # msg += 'visible lines: %s\n' % visible_lines
-        for name, value in assignments:
+    def format_vars(self, assignments, name_map, lineno, context):
+        msgs = []
+        for name, value in assignments.items():
             occurrences = name_map[name]
             startlines, _, endlines, _ = zip(*occurrences)
             occurrences = set(startlines) | set(endlines)
-            if occurrences.intersection(visible_lines):
-                if isinstance(value, str):
-                    val_str = value
-                if np and isinstance(value, np.ndarray):
-                    val_str = self.format_array(value)
-                elif hasattr(value, '__repr__'):
-                    try:
-                        val_str = repr(value)
-                    except:
-                        val_str = "<error calling __repr__>"
-                else:
-                    try:
-                        val_str = str(value)
-                    except:
-                        val_str = "<error calling __str__>"
-
-                if self.truncate_vals and len(val_str) > (self.truncate_vals+3):
-                    val_str = "%s..." % val_str[:self.truncate_vals]
-
-                indented_newline = '\n' + self.var_indent + (' ' * (len(name) + 3))
-                val_str = val_str.replace('\n', indented_newline)
-                msg += self.assignment_tpl % (name, val_str)
+            visible_occurences = occurrences.intersection(context)
+            if visible_occurences:
+                msgs.append(self.format_assignment(name, value,
+                                                   visible_occurences, lineno))
+        msg = ''.join(msgs)
         return msg
+
+    def format_assignment(self, name, value, *args):
+        val_str = self.format_value(name, value)
+        return self.val_tpl % (name, val_str)
+
+    def format_value(self, name, value):
+        if isinstance(value, str):
+            val_str = value
+        if np and isinstance(value, np.ndarray):
+            val_str = self.format_array(value)
+        elif hasattr(value, '__repr__'):
+            try:
+                val_str = repr(value)
+            except:
+                val_str = "<error calling __repr__>"
+        else:
+            try:
+                val_str = str(value)
+            except:
+                val_str = "<error calling __str__>"
+
+        if self.truncate_vals and len(val_str) > (self.truncate_vals+3):
+            val_str = "%s..." % val_str[:self.truncate_vals]
+
+        nl_indented = '\n' + self.var_indent + (' ' * (len(name) + 3))
+        val_str = val_str.replace('\n', nl_indented)
+        return val_str
 
     def format_array(self, arr):
         if arr.ndim >= 1:
@@ -198,6 +213,18 @@ class FrameFormatter():
                                prefix=prefix, suffix=suffix)
         msg += suffix
         return msg
+
+    def trim_whitespace(self, lines):
+        # TODO move to utils
+        min_padding = 9000
+        for line in lines:
+            line = line.replace('\t', '    ')
+            n_nonwhite = len(line.lstrip())
+            if n_nonwhite > 0:
+                leading_spaces = len(line) - n_nonwhite
+                min_padding = min(leading_spaces, min_padding)
+        pad = ' ' * min_padding
+        return [line.replace(pad, '', 1) for line in lines]
 
 
 class InsanelyVerboseFormatter(FrameFormatter):
@@ -220,12 +247,30 @@ class MinimalFormatter(FrameFormatter):
     def __init__(self):
         super().__init__(source_context=1, show_vals=False)
 
-# class ColorTB(StringTB):
-#     header_tpl = "%s... "  #TODO colored version
 
-# class PickleTB(TTCore):
-#     pass
+class ColoredVariablesFormatter(FrameFormatter):
+    def __init__(self, *args, **kwargs):
+        self.rng = random.Random()
+        super().__init__(*args, **kwargs)
 
+    def pick_color(self, name):
+        self.rng.seed(name)
+        hue = self.rng.random()
+        sat = 1.0
+        val = 1.0
+        rgb = colorsys.hsv_to_rgb(hue, sat, val)
+        return rgb
+
+    def process_source(self, fi, context):
+        colormap = {name: self.pick_color(name) for name in fi.name_map}
+
+
+        pass
+
+
+    def format_assignment(self, name, value, occurrences, lineno):
+
+        pass
 
 
 def format_tb(frameinfos, formatter=None, reverse_order=False):
@@ -233,7 +278,7 @@ def format_tb(frameinfos, formatter=None, reverse_order=False):
         formatter = VerboseFormatter()
     if not isinstance(frameinfos, list):
         frameinfos = [frameinfos]
-    tb_strings = [formatter.show_frame(fi) for fi in frameinfos]
+    tb_strings = [formatter.format_frame(fi) for fi in frameinfos]
     if reverse_order:
         tb_strings = reversed(tb_strings)
     return "".join(tb_strings)
@@ -248,7 +293,7 @@ def format_summary(frameinfos, reverse_order=False):
     return "".join(msg)
 
 
-def format(etype, evalue, tb, show_full=True, show_summary=True,
+def format(etype, evalue, tb, show_full=True, show_summary=False,
            reverse_order=False, **formatter_kwargs):
 
     frameinfos = list(walk_tb(tb))

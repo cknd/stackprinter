@@ -1,12 +1,11 @@
-import sys
 import inspect
 import tokenize
 from keyword import kwlist
-from collections import deque, defaultdict, namedtuple
+from collections import defaultdict, OrderedDict, namedtuple
 from io import BytesIO
 
 FrameInfo = namedtuple('FrameInfo', ['filename', 'function', 'lineno',
-                                      'source', 'name_map', 'assignments'])
+                                      'source_map', 'name_map', 'assignments'])
 
 def walk_tb(tb):
     """
@@ -41,9 +40,9 @@ def inspect_tb(tb):
     name_map = get_name_map(source, line_offset=startline-1)
     assignments = get_vars(name_map.keys(), frame.f_locals, frame.f_globals)
     source_lines = [(ln + startline, line) for ln, line in enumerate(source)]
-
+    source_map = OrderedDict(source_lines)
     finfo =  FrameInfo(filename, function, lineno,
-                       source_lines, name_map, assignments)
+                       source_map, name_map, assignments)
 
     return finfo
 
@@ -131,7 +130,8 @@ def get_vars(names, loc, glob):
             pass
         else:
             assignments.append((name, val))
-    return assignments
+    return OrderedDict(assignments)
+
 
 class UndefinedName(KeyError):
     pass
