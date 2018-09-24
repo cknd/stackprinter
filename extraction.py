@@ -92,6 +92,7 @@ def get_name_map(source, line_offset=0):
         if ttype == tokenize.NAME and token not in kwlist:
             if not dot_continuation:
                 names_found.append((token, (sline, scol), (eline, ecol)))
+                was_dot_continuation = False
             else:
                 # this name seems to be part of an attribute lookup,
                 # which we want to treat as one long name.
@@ -102,13 +103,14 @@ def get_name_map(source, line_offset=0):
                 end_col = max(old_ecol, ecol)
                 names_found[-1] = (extended_name, prev[1], (end_line, end_col))
                 dot_continuation = False
+                was_dot_continuation = True
             was_name = True
         else:
             if token == '.' and was_name:
                 dot_continuation = True
-            elif token == '(' and was_name:
+            elif token == '(' and was_name and not was_dot_continuation:
                 # forget the name we just found because
-                # it is a function definition / call
+                # it is a function or class definition
                 names_found = names_found[:-1]
             was_name = False
 
@@ -136,19 +138,33 @@ def get_vars(names, loc, glob):
 class UndefinedName(KeyError):
     pass
 
-def lookup(name, scopeA, scopeB):
-    name, *attr_path = name.split('.')
+class UnresolvedAttribute():
+    def __init__(self, basename, attr_path, last_resolved, value):
+        self.basename = basename
+        self.attr_path = attr_path
+        self.last_resolved = last_resolved
+        self.last_resolvable_value = value
 
-    if name in scopeA:
-        val = scopeA[name]
-    elif name in scopeB:
-        val = scopeB[name]
+    @property
+    def last_resolvable_name(self):
+        return self.basename + '.'.join([''] + self.attr_path[:self.last_resolved])
+
+
+def lookup(name, scopeA, scopeB):
+    basename, *attr_path = name.split('.')
+    if basename in scopeA:
+        val = scopeA[basename]
+    elif basename in scopeB:
+        val = scopeB[basename]
     else:
         # not all names in the source file will be
         # defined (yet) when we get to see the frame
-        raise UndefinedName(name)
+        raise UndefinedName(basename)
 
-    for attr in attr_path:
-        val = getattr(val, attr)
+    for k, attr in enumerate(attr_path):
+        try:
+            val = getattr(val, attr)
+        except AttributeError:
+            return UnresolvedAttribute(basename, attr_path, k, val)
 
     return val

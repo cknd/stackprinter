@@ -18,6 +18,7 @@ if __name__ == '__main__':
         Y = np.array(0)
         scoped = outer_scope_thing
         # np.reshape(X,9000)
+        np.linalg.norm.broken_attribute_lookup()
         X[0] = len(thing)
         for k in X:
             if np.sum(k) != 0:

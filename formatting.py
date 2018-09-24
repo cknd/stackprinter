@@ -1,10 +1,9 @@
 import sys
 import traceback
-import textwrap
 from keyword import kwlist
 from collections import deque, defaultdict, OrderedDict
 from io import BytesIO
-from extraction import walk_tb, FrameInfo
+from extraction import walk_tb, FrameInfo, UnresolvedAttribute
 try:
     import numpy as np
 except ImportError:
@@ -14,13 +13,6 @@ except ImportError:
 import colorsys
 import random
 
-def get_ansi_color_tpl(r=1.0, g=1.0, b=1.0):
-    r = int(round(r*5))
-    g = int(round(g*5))
-    b = int(round(b*5))
-    point = 16 + 36 * r + 6 * g + b
-    code_tpl = ('\u001b[38;5;%dm' % point) + '%s\u001b[0m'
-    return code_tpl
 
 
 class FrameFormatter():
@@ -62,13 +54,13 @@ class FrameFormatter():
             cut string representations of variable values to this maximum length
 
         """
-        self._validate(source_context, show_vals)
+        self._validate_args(source_context, show_vals)
         self.source_context = source_context
         self.show_vals = show_vals
         self.show_signature = show_signature
         self.truncate_vals = int(truncate_vals)
 
-    def _validate(self, source_context, show_vals):
+    def _validate_args(self, source_context, show_vals):
         if not (isinstance(source_context, int) or source_context == 'frame'):
             raise ValueError("source_context must be an integer or 'frame'.")
 
@@ -91,9 +83,14 @@ class FrameFormatter():
             msg += self.format_source(source_map, fi.lineno, source_context)
 
         if val_context:
+            visible_occurences = {}
+            for name, locations in fi.name_map.items():
+                startlines, _, endlines, _ = zip(*locations)
+                occurrences = set(startlines) | set(endlines)
+                visible_occurences[name] = occurrences.intersection(val_context)
+
             msg += self.sep_vars
-            msg += self.format_vars(fi.assignments, fi.name_map,
-                                    fi.lineno, val_context)
+            msg += self.format_vars(fi.assignments, visible_occurences, fi.lineno)
             msg += self.sep_vars
 
         return msg
@@ -132,6 +129,7 @@ class FrameFormatter():
         return source_lines, val_lines
 
     def process_source(self, fi, context):
+        # override to add syntax coloring etc
         return fi.source_map
 
     def format_source(self, source_map, lineno, context):
@@ -156,28 +154,33 @@ class FrameFormatter():
         msg += self.sep_source_below
         return msg
 
-    def format_vars(self, assignments, name_map, lineno, context):
+    def format_vars(self, assignments, visible_occurences, lineno):
         msgs = []
         for name, value in assignments.items():
-            occurrences = name_map[name]
-            startlines, _, endlines, _ = zip(*occurrences)
-            occurrences = set(startlines) | set(endlines)
-            visible_occurences = occurrences.intersection(context)
-            if visible_occurences:
+            occurences = visible_occurences[name]
+            if occurences:
+                value = assignments[name]
                 msgs.append(self.format_assignment(name, value,
-                                                   visible_occurences, lineno))
+                                                   occurences, lineno))
         msg = ''.join(msgs)
         return msg
 
-    def format_assignment(self, name, value, *args):
+    def format_assignment(self, name, value, occurences, lineno):
         val_str = self.format_value(name, value)
         return self.val_tpl % (name, val_str)
 
     def format_value(self, name, value):
         if isinstance(value, str):
             val_str = value
-        if np and isinstance(value, np.ndarray):
+
+        elif isinstance(value, UnresolvedAttribute):
+            val_tpl= "# Attribute doesn't exist. Base was: \n%s = %s"
+            lastval_str = self.format_value('   ', value.last_resolvable_value)
+            val_str = val_tpl % (value.last_resolvable_name, lastval_str)
+
+        elif np and isinstance(value, np.ndarray):
             val_str = self.format_array(value)
+
         elif hasattr(value, '__repr__'):
             try:
                 val_str = repr(value)
@@ -258,19 +261,34 @@ class ColoredVariablesFormatter(FrameFormatter):
         hue = self.rng.random()
         sat = 1.0
         val = 1.0
-        rgb = colorsys.hsv_to_rgb(hue, sat, val)
-        return rgb
+        return (hue, sat, val)
+
+    def get_ansi_color_tpl(self, hue=1., sat=1., val=1.):
+        r, g, b = colorsys.hsv_to_rgb(hue, sat, val)
+        r = int(round(r*5))
+        g = int(round(g*5))
+        b = int(round(b*5))
+        point = 16 + 36 * r + 6 * g + b
+        code_tpl = ('\u001b[38;5;%dm' % point) + '%s\u001b[0m'
+        return code_tpl
 
     def process_source(self, fi, context):
-        colormap = {name: self.pick_color(name) for name in fi.name_map}
-
-
-        pass
+        self.colormap = {name: self.pick_color(name) for name in fi.name_map}
+        return fi.source_map
 
 
     def format_assignment(self, name, value, occurrences, lineno):
+        hue, sat, val = self.colormap[name]
+        if lineno in occurrences:
+            sat = 1.
+            val = 1.
+        else:
+            sat = 0.5
+            val = 0.5
+        color = self.get_ansi_color_tpl(hue, sat, val)
+        val_str = self.format_value(name, value)
+        return self.val_tpl % (color % name, color % val_str)
 
-        pass
 
 
 def format_tb(frameinfos, formatter=None, reverse_order=False):
@@ -310,6 +328,8 @@ def format(etype, evalue, tb, show_full=True, show_summary=False,
         if show_summary:
             msg += "\n\n========== Full traceback: ==========\n"
         formatter = VerboseFormatter(**formatter_kwargs)
+        # formatter = ColoredVariablesFormatter(**formatter_kwargs)
+
         msg += format_tb(frameinfos, formatter, reverse_order)
         msg += exception_msg
     return msg
