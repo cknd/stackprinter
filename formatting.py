@@ -14,7 +14,6 @@ import colorsys
 import random
 
 
-
 class FrameFormatter():
     headline_tpl = "\n\nFile %s in %s Line %s\n"
     sourceline_tpl = "%s%-3s %s"
@@ -84,10 +83,10 @@ class FrameFormatter():
 
         if val_context:
             visible_occurences = {}
-            for name, locations in fi.name_map.items():
-                startlines, _, endlines, _ = zip(*locations)
-                occurrences = set(startlines) | set(endlines)
-                visible_occurences[name] = occurrences.intersection(val_context)
+            for name, occurences in fi.name_map.items():
+                lines, _, _ = zip(*occurences)
+                lines = set(lines)
+                visible_occurences[name] = lines.intersection(val_context)
 
             msg += self.sep_vars
             msg += self.format_vars(fi.assignments, visible_occurences, fi.lineno)
@@ -263,32 +262,65 @@ class ColoredVariablesFormatter(FrameFormatter):
         val = 1.0
         return (hue, sat, val)
 
-    def get_ansi_color_tpl(self, hue=1., sat=1., val=1.):
-        r, g, b = colorsys.hsv_to_rgb(hue, sat, val)
-        r = int(round(r*5))
-        g = int(round(g*5))
-        b = int(round(b*5))
-        point = 16 + 36 * r + 6 * g + b
-        code_tpl = ('\u001b[38;5;%dm' % point) + '%s\u001b[0m'
-        return code_tpl
-
-    def process_source(self, fi, context):
-        self.colormap = {name: self.pick_color(name) for name in fi.name_map}
-        return fi.source_map
-
-
-    def format_assignment(self, name, value, occurrences, lineno):
+    def get_ansi_color_tpl(self, name, highlight):
         hue, sat, val = self.colormap[name]
-        if lineno in occurrences:
+
+        if highlight:
             sat = 1.
             val = 1.
         else:
             sat = 0.5
             val = 0.5
-        color = self.get_ansi_color_tpl(hue, sat, val)
+
+        r, g, b = colorsys.hsv_to_rgb(hue, sat, val)
+        r = int(round(r*5))
+        g = int(round(g*5))
+        b = int(round(b*5))
+        point = 16 + 36 * r + 6 * g + b
+
+        code_tpl = ('\u001b[38;5;%dm' % point) + '%s\u001b[0m'
+        return code_tpl
+
+
+    def process_source(self, fi, context):
+        self.colormap = {name: self.pick_color(name) for name in fi.name_map}
+
+        colored_source_map = self.color_names_in_source(fi.source_map, fi.name_map, fi.lineno)
+
+        return colored_source_map
+
+    def color_names_in_source(self, source_map, name_map, lineno):
+
+        # maybe provide it this way right away in extraction? does anything reall prefer name2lines?
+        line2names = defaultdict(list)
+        for name, occurences in name_map.items():
+            for line, scol, ecol in occurences:
+                line2names[line].append((name, scol, ecol))
+
+        colored_source_map = OrderedDict()
+        for ln, line in source_map.items():
+            highlight = (ln == lineno)
+            col_offset = 0
+            plan = sorted(line2names[ln], key=lambda oc: oc[1])
+            for (name, scol, ecol) in plan:
+                scol += col_offset
+                ecol += col_offset
+                before = line[:scol]
+                after = line[ecol:]
+
+                color_tpl = self.get_ansi_color_tpl(name, highlight)
+                colored_name = color_tpl % name
+                line = before + (colored_name) + after
+                col_offset += len(colored_name) - len(name)
+
+            colored_source_map[ln] = line
+        return colored_source_map
+
+
+    def format_assignment(self, name, value, occurrences, lineno):
+        color = self.get_ansi_color_tpl(name, (lineno in occurrences))
         val_str = self.format_value(name, value)
         return self.val_tpl % (color % name, color % val_str)
-
 
 
 def format_tb(frameinfos, formatter=None, reverse_order=False):
@@ -327,8 +359,8 @@ def format(etype, evalue, tb, show_full=True, show_summary=False,
     if show_full:
         if show_summary:
             msg += "\n\n========== Full traceback: ==========\n"
-        formatter = VerboseFormatter(**formatter_kwargs)
-        # formatter = ColoredVariablesFormatter(**formatter_kwargs)
+        # formatter = VerboseFormatter(**formatter_kwargs)
+        formatter = ColoredVariablesFormatter(**formatter_kwargs)
 
         msg += format_tb(frameinfos, formatter, reverse_order)
         msg += exception_msg

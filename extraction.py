@@ -118,7 +118,14 @@ def get_name_map(source, line_offset=0):
     for name, (sline, scol), (eline, ecol) in names_found:
         sline += line_offset
         eline += line_offset
-        name2locs[name].append((sline, scol, eline, ecol))
+        if sline != eline:
+            raise Exception('cant deal with names that span multiple lines')
+            # TODO
+            # if the rest of the name continues in the next line,
+            # use len(thisline)-1 as the ecol of this line and add another
+            # entry for the next line, starting at col 0  and ending at ecol.
+        else:
+            name2locs[name].append((sline, scol, ecol))
 
     return name2locs
 
