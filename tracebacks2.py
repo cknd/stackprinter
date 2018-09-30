@@ -9,25 +9,20 @@ if __name__ == '__main__':
     import numpy as np
     # sys.excepthook = excepthook
 
-    scopidoped = None
 
-    def a_broken_function(thing, otherthing=1234):
-        # very long function
-        # with many lines
-        # and various weird variables
-        X = np.zeros((4,5))
-        Y = np.array(0)
-        do_something = lambda val: another_broken_function(val)
-        scoped = scopidoped
-        # np.reshape(X,9000)
-        # np.linalg.norm.nonexistant_attribute()
-        listcomp = [[do_something(val) for val in row] for row in X]
-        X[0] = len(thing)
+    outer_scope_thing = 4
+
+    def a_broken_function(thing,
+                          various=None,
+                          other=None,
+                          things=None):
+
+        X = np.zeros((len(thing), outer_scope_thing))
+        X[0,0] = 1
+        do_something = lambda val: another_broken_function(val + outer_scope_thing)
         for k in X:
             if np.sum(k) != 0:
-                raise Exception('something happened')
-                # more code:
-                zup = 123
+                listcomp = [[do_something(val) for val in row] for row in X]
 
     def some_function(boing, zap='!'):
         thing = boing + zap
@@ -36,7 +31,9 @@ if __name__ == '__main__':
 
     def another_broken_function(val):
         if val != 42:
-            raise Exception('ahoi!')
+            raise Exception('something happened')
+            # np.reshape([1,2,3], 9000)
+            # val.nonexistant_attribute()
 
     # some_function("hello")
     try:

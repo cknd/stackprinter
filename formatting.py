@@ -15,7 +15,7 @@ import random
 
 
 class FrameFormatter():
-    headline_tpl = "\n\nFile %s in %s Line %s\n"
+    headline_tpl = "File %s, line %s, in %s\n"
     sourceline_tpl = "%s%-3s %s"
     sep_vars = "    %s\n" % ('.' * 50)
     sep_source_below = ""
@@ -73,7 +73,7 @@ class FrameFormatter():
             raise ValueError("Expected a FrameInfo tuple. "\
                              "extraction.inspect_tb() makes those.")
 
-        msg = self.headline_tpl % (fi.filename, fi.function, fi.lineno)
+        msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
         source_context, val_context = self.select_visible_lines(fi)
 
         source_map = self.process_source(fi, source_context)
@@ -93,6 +93,7 @@ class FrameFormatter():
             msg += self.sep_vars
             msg += self.format_vars(fi.assignments, visible_occurences, fi.lineno)
             msg += self.sep_vars
+            msg += '\n'
 
         return msg
 
@@ -149,9 +150,10 @@ class FrameFormatter():
                     marker = '--> '
                 else:
                     marker = '    '
+                msg += self.sourceline_tpl % (marker, ln, line)
             else:
-                marker = ''
-            msg += self.sourceline_tpl % (marker, ln, line)
+                msg = '   ' + line
+
         msg += self.sep_source_below
         return msg
 
@@ -244,12 +246,10 @@ class VerboseFormatter(FrameFormatter):
 
 class TerseFormatter(FrameFormatter):
     # header, 1 line of source, vals for that one line
-    headline_tpl = "File %s in %s Line %s\n"
     def __init__(self):
         super().__init__(source_context=1, truncate_vals=70)
 
 class MinimalFormatter(FrameFormatter):
-    headline_tpl = "File %s in %s Line %s\n"
     def __init__(self):
         super().__init__(source_context=1, show_vals=False)
 
@@ -329,12 +329,21 @@ class ColoredVariablesFormatter(FrameFormatter):
         return self.val_tpl % (color % name, color % val_str)
 
 
-def format_tb(frameinfos, formatter=None, reverse_order=False):
+def format_tb(frameinfos, formatter=None, terse_formatter=None, reverse_order=False):
     if formatter is None:
         formatter = VerboseFormatter()
+    if terse_formatter is None:
+        terse_formatter = formatter
     if not isinstance(frameinfos, list):
         frameinfos = [frameinfos]
-    tb_strings = [formatter.format_frame(fi) for fi in frameinfos]
+
+    tb_strings = []
+    for fi in frameinfos:
+        if 'site-packages' in fi.filename:
+            tb_strings.append(terse_formatter.format_frame(fi))
+        else:
+            tb_strings.append(formatter.format_frame(fi))
+
     if reverse_order:
         tb_strings = reversed(tb_strings)
     return "".join(tb_strings)
@@ -367,8 +376,9 @@ def format(etype, evalue, tb, show_full=True, show_summary=False,
             msg += "\n\n========== Full traceback: ==========\n"
         # formatter = VerboseFormatter(**formatter_kwargs)
         formatter = ColoredVariablesFormatter(**formatter_kwargs)
+        terse_formatter = MinimalFormatter(**formatter_kwargs)
 
-        msg += format_tb(frameinfos, formatter, reverse_order)
+        msg += format_tb(frameinfos, formatter, terse_formatter, reverse_order)
         msg += exception_msg
     return msg
 
