@@ -84,6 +84,8 @@ class FrameFormatter():
         if val_context:
             visible_occurences = {}
             for name, occurences in fi.name_map.items():
+                if name in kwlist:
+                    continue
                 lines, _, _ = zip(*occurences)
                 lines = set(lines)
                 visible_occurences[name] = lines.intersection(val_context)
@@ -97,7 +99,7 @@ class FrameFormatter():
     def select_visible_lines(self, fi):
         minl, maxl = min(fi.source_map), max(fi.source_map)
         lineno = fi.lineno
-        is_module = (fi.function == '<module>')
+        has_header = (fi.function not in ['<module>', '<lambda>', '<listcomp>'])
 
         if self.source_context == 'frame':
             source_lines = range(minl, maxl)
@@ -111,7 +113,7 @@ class FrameFormatter():
             start = max(start, minl)
             stop = min(stop, maxl)
             source_lines = list(range(start, stop+1))
-            if self.show_signature and not is_module and start > minl:
+            if self.show_signature and has_header and start > minl:
                 source_lines = [minl] + source_lines
                 # TODO do the right thing for multiline signatures
             source_lines = source_lines
@@ -169,13 +171,15 @@ class FrameFormatter():
         return self.val_tpl % (name, val_str)
 
     def format_value(self, name, value):
-        if isinstance(value, str):
-            val_str = value
+        indent = len(name) + 3
 
-        elif isinstance(value, UnresolvedAttribute):
-            val_tpl= "# Attribute doesn't exist. Base was: \n%s = %s"
+
+        if isinstance(value, UnresolvedAttribute):
+            reason = "# %s: '%s'" % (value.exc_type, value.first_failed)
+            val_tpl = reason + "\n%s = %s"
             lastval_str = self.format_value('   ', value.last_resolvable_value)
             val_str = val_tpl % (value.last_resolvable_name, lastval_str)
+            indent = 0
 
         elif np and isinstance(value, np.ndarray):
             val_str = self.format_array(value)
@@ -194,7 +198,7 @@ class FrameFormatter():
         if self.truncate_vals and len(val_str) > (self.truncate_vals+3):
             val_str = "%s..." % val_str[:self.truncate_vals]
 
-        nl_indented = '\n' + self.var_indent + (' ' * (len(name) + 3))
+        nl_indented = '\n' + self.var_indent + (' ' * (indent))
         val_str = val_str.replace('\n', nl_indented)
         return val_str
 
@@ -251,40 +255,42 @@ class MinimalFormatter(FrameFormatter):
 
 
 class ColoredVariablesFormatter(FrameFormatter):
+
     def __init__(self, *args, **kwargs):
         self.rng = random.Random()
         super().__init__(*args, **kwargs)
 
     def pick_color(self, name):
         self.rng.seed(name)
-        hue = self.rng.random()
+        hue = self.rng.uniform(0,1.)
         sat = 1.0
         val = 1.0
         return (hue, sat, val)
 
     def get_ansi_color_tpl(self, name, highlight):
-        hue, sat, val = self.colormap[name]
-
-        if highlight:
-            sat = 1.
-            val = 1.
+        if name in kwlist:
+            hue, sat, val = 0., 0., 1.
+            bold = True
         else:
-            sat = 0.5
-            val = 0.5
+            hue, sat, val = self.colormap[name]
+            bold = False
+            if highlight:
+                bold = True
+            else:
+                val = 0.2
 
         r, g, b = colorsys.hsv_to_rgb(hue, sat, val)
         r = int(round(r*5))
         g = int(round(g*5))
         b = int(round(b*5))
         point = 16 + 36 * r + 6 * g + b
-
-        code_tpl = ('\u001b[38;5;%dm' % point) + '%s\u001b[0m'
+        bold_tp = '1;' if bold else ''
+        code_tpl = ('\u001b[%s38;5;%dm' % (bold_tp, point)) + '%s\u001b[0m'
         return code_tpl
 
 
     def process_source(self, fi, context):
-        self.colormap = {name: self.pick_color(name) for name in fi.name_map}
-
+        self.colormap = {name: self.pick_color(name) for name in fi.name_map if name not in kwlist}
         colored_source_map = self.color_names_in_source(fi.source_map, fi.name_map, fi.lineno)
 
         return colored_source_map

@@ -43,7 +43,6 @@ def inspect_tb(tb):
     source_map = OrderedDict(source_lines)
     finfo =  FrameInfo(filename, function, lineno,
                        source_map, name_map, assignments)
-
     return finfo
 
 
@@ -62,8 +61,7 @@ def get_source(frame):
     startline : int
         line number of lines[0] in the original source file
     """
-    if frame.f_code.co_name == '<module>':
-        # TODO see if this is still necessary
+    if frame.f_code.co_name in ['<module>', '<lambda>', '<listcomp>']:
         lines, _ = inspect.findsource(frame)
         startline = 1
     else:
@@ -89,7 +87,7 @@ def get_name_map(source, line_offset=0):
     dot_continuation = False
     was_name = False
     for ttype, token, (sline, scol), (eline, ecol), line in tokens:
-        if ttype == tokenize.NAME and token not in kwlist:
+        if ttype == tokenize.NAME: #and token not in kwlist:
             if not dot_continuation:
                 names_found.append((token, (sline, scol), (eline, ecol)))
                 was_dot_continuation = False
@@ -146,15 +144,19 @@ class UndefinedName(KeyError):
     pass
 
 class UnresolvedAttribute():
-    def __init__(self, basename, attr_path, last_resolved, value):
+    def __init__(self, basename, attr_path, failure_idx, value,
+                exc_type, exc_str):
         self.basename = basename
         self.attr_path = attr_path
-        self.last_resolved = last_resolved
+        self.first_failed = attr_path[failure_idx]
+        self.failure_idx = failure_idx
         self.last_resolvable_value = value
+        self.exc_type = exc_type
+        self.exc_str = exc_str
 
     @property
     def last_resolvable_name(self):
-        return self.basename + '.'.join([''] + self.attr_path[:self.last_resolved])
+        return self.basename + '.'.join([''] + self.attr_path[:self.failure_idx])
 
 
 def lookup(name, scopeA, scopeB):
@@ -171,7 +173,9 @@ def lookup(name, scopeA, scopeB):
     for k, attr in enumerate(attr_path):
         try:
             val = getattr(val, attr)
-        except AttributeError:
-            return UnresolvedAttribute(basename, attr_path, k, val)
+        except Exception as e:
+            return UnresolvedAttribute(basename, attr_path, k, val,
+                                       e.__class__.__name__, str(e))
+
 
     return val
