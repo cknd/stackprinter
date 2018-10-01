@@ -14,6 +14,9 @@ import colorsys
 import random
 
 
+## TODO decide whether anything that doesn't use self needs to be in the class
+
+
 class FrameFormatter():
     headline_tpl = "File %s, line %s, in %s\n"
     sourceline_tpl = "%s%-3s %s"
@@ -76,22 +79,15 @@ class FrameFormatter():
         msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
         source_context, val_context = self.select_visible_lines(fi)
 
-        source_map = self.process_source(fi, source_context)
-
         if source_context:
-            msg += self.format_source(source_map, fi.lineno, source_context)
+            source_lines = self.format_source(fi.source_map, source_context)
+            msg += self.format_listing(source_lines, fi.lineno, source_context)
 
         if val_context:
-            visible_occurences = {}
-            for name, occurences in fi.name_map.items():
-                if name in kwlist:
-                    continue
-                lines, _, _ = zip(*occurences)
-                lines = set(lines)
-                visible_occurences[name] = lines.intersection(val_context)
-
+            visible_names = set(name for ln in val_context
+                                        for name in fi.line2names[ln])
             msg += self.sep_vars
-            msg += self.format_vars(fi.assignments, visible_occurences, fi.lineno)
+            msg += self.format_vars(fi.assignments, visible_names)
             msg += self.sep_vars
             msg += '\n'
 
@@ -100,24 +96,27 @@ class FrameFormatter():
     def select_visible_lines(self, fi):
         minl, maxl = min(fi.source_map), max(fi.source_map)
         lineno = fi.lineno
-        has_header = (fi.function not in ['<module>', '<lambda>', '<listcomp>'])
 
-        if self.source_context == 'frame':
-            source_lines = range(minl, maxl)
-        elif self.source_context == 0:
+        if self.source_context == 0:
             source_lines = []
         elif self.source_context == 1:
             source_lines = [lineno]
+        elif self.source_context == 'frame':
+            source_lines = range(minl, maxl)
         elif self.source_context > 1:
+
             start = max(lineno - (self.source_context - 1), 0)
             stop = lineno + 1
             start = max(start, minl)
             stop = min(stop, maxl)
             source_lines = list(range(start, stop+1))
-            if self.show_signature and has_header and start > minl:
-                source_lines = [minl] + source_lines
-                # TODO do the right thing for multiline signatures
-            source_lines = source_lines
+            if self.show_signature:
+                source_lines = sorted(set(source_lines) | set(fi.head_lns))
+
+        # for ln in source_lines:
+        #     print(ln, ''.join(ch[0] for ch in fi.source_map[ln]), end='')
+        # print('---', fi.lineno)
+        # import pdb; pdb.set_trace()
 
         if self.show_vals:
             if self.show_vals == 'frame':
@@ -130,17 +129,21 @@ class FrameFormatter():
             val_lines = []
         return source_lines, val_lines
 
-    def process_source(self, fi, context):
-        # override to add syntax coloring etc
-        return fi.source_map
+    def format_source(self, source_map, context):
+        source_lines = OrderedDict()
+        for ln in context:
+            line = ''.join(snippet for snippet, ttype, _ in source_map[ln])
+            source_lines[ln] = line
+        return source_lines
 
-    def format_source(self, source_map, lineno, context):
-        lines = [source_map[ln] for ln in context]
+    def format_listing(self, source_lines, lineno, context):
+        lines = [source_lines[ln] for ln in context]
         lines = self.trim_whitespace(lines)
 
-        msg = ""
-        ln_prev = None
         n_context = len(context)
+        ln_prev = None
+        msg = ""
+
         for ln, line in zip(context, lines):
             if ln_prev and ln_prev != ln - 1:
                 msg += "(...)\n"
@@ -157,18 +160,15 @@ class FrameFormatter():
         msg += self.sep_source_below
         return msg
 
-    def format_vars(self, assignments, visible_occurences, lineno):
+    def format_vars(self, assignments, visible_names):
         msgs = []
         for name, value in assignments.items():
-            occurences = visible_occurences[name]
-            if occurences:
-                value = assignments[name]
-                msgs.append(self.format_assignment(name, value,
-                                                   occurences, lineno))
+            if name in visible_names:
+                msgs.append(self.format_assignment(name, value))
         msg = ''.join(msgs)
         return msg
 
-    def format_assignment(self, name, value, occurences, lineno):
+    def format_assignment(self, name, value):
         val_str = self.format_value(name, value)
         return self.val_tpl % (name, val_str)
 
@@ -290,18 +290,12 @@ class ColoredVariablesFormatter(FrameFormatter):
 
 
     def process_source(self, fi, context):
-        self.colormap = {name: self.pick_color(name) for name in fi.name_map if name not in kwlist}
+        self.colormap = {name: self.pick_color(name) for name in fi.name2lines if name not in kwlist}
         colored_source_map = self.color_names_in_source(fi.source_map, fi.name_map, fi.lineno)
 
         return colored_source_map
 
-    def color_names_in_source(self, source_map, name_map, lineno):
-
-        # maybe provide it this way right away in extraction? does anything reall prefer name2lines?
-        line2names = defaultdict(list)
-        for name, occurences in name_map.items():
-            for line, scol, ecol in occurences:
-                line2names[line].append((name, scol, ecol))
+    def color_names_in_source(self, source_map, line2names, lineno):
 
         colored_source_map = OrderedDict()
         for ln, line in source_map.items():
@@ -374,8 +368,8 @@ def format(etype, evalue, tb, show_full=True, show_summary=False,
     if show_full:
         if show_summary:
             msg += "\n\n========== Full traceback: ==========\n"
-        # formatter = VerboseFormatter(**formatter_kwargs)
-        formatter = ColoredVariablesFormatter(**formatter_kwargs)
+        formatter = VerboseFormatter(**formatter_kwargs)
+        # formatter = ColoredVariablesFormatter(**formatter_kwargs)
         terse_formatter = MinimalFormatter(**formatter_kwargs)
 
         msg += format_tb(frameinfos, formatter, terse_formatter, reverse_order)

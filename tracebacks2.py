@@ -16,7 +16,11 @@ if __name__ == '__main__':
                           various=None,
                           other=None,
                           things=None):
-
+        """
+        some very long
+        doc string
+        """
+        bla = """ another triple quoted string """
         X = np.zeros((len(thing), outer_scope_thing))
         X[0,0] = 1
         do_something = lambda val: another_broken_function(val + outer_scope_thing)
