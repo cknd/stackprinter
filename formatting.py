@@ -4,6 +4,7 @@ from keyword import kwlist
 from collections import deque, defaultdict, OrderedDict
 from io import BytesIO
 from extraction import walk_tb, FrameInfo, UnresolvedAttribute
+import extraction as ex
 try:
     import numpy as np
 except ImportError:
@@ -19,7 +20,9 @@ import random
 
 class FrameFormatter():
     headline_tpl = "File %s, line %s, in %s\n"
-    sourceline_tpl = "%s%-3s %s"
+    sourceline_tpl = "    %-3s %s"
+    marked_sourceline_tpl = "--> %-3s %s"
+
     sep_vars = "    %s\n" % ('.' * 50)
     sep_source_below = ""
     var_indent = "        "
@@ -80,7 +83,7 @@ class FrameFormatter():
         source_context, val_context = self.select_visible_lines(fi)
 
         if source_context:
-            source_lines = self.format_source(fi.source_map, source_context)
+            source_lines = self.format_source(fi.source_map, source_context, fi.lineno)
             msg += self.format_listing(source_lines, fi.lineno, source_context)
 
         if val_context:
@@ -129,7 +132,7 @@ class FrameFormatter():
             val_lines = []
         return source_lines, val_lines
 
-    def format_source(self, source_map, context):
+    def format_source(self, source_map, context, lineno):
         source_lines = OrderedDict()
         for ln in context:
             line = ''.join(snippet for snippet, ttype, _ in source_map[ln])
@@ -150,10 +153,10 @@ class FrameFormatter():
             ln_prev = ln
             if n_context > 1:
                 if ln == lineno:
-                    marker = '--> '
+                    tpl = self.marked_sourceline_tpl
                 else:
-                    marker = '    '
-                msg += self.sourceline_tpl % (marker, ln, line)
+                    tpl = self.sourceline_tpl
+                msg += tpl % (ln, line)
             else:
                 msg = '   ' + line
 
@@ -258,6 +261,12 @@ class ColoredVariablesFormatter(FrameFormatter):
 
     def __init__(self, *args, **kwargs):
         self.rng = random.Random()
+        main_tpl_b = self.get_ansi_tpl(0.35, 0., 1., True)
+        main_tpl_n = self.get_ansi_tpl(0.35, 0., 0.5, False)
+        self.headline_tpl = main_tpl_b % super().headline_tpl
+        self.sourceline_tpl = main_tpl_n % super().sourceline_tpl
+        self.marked_sourceline_tpl = main_tpl_b % super().marked_sourceline_tpl
+        self.sep_vars = main_tpl_n % super().sep_vars
         super().__init__(*args, **kwargs)
 
     def pick_color(self, name):
@@ -267,18 +276,7 @@ class ColoredVariablesFormatter(FrameFormatter):
         val = 1.0
         return (hue, sat, val)
 
-    def get_ansi_color_tpl(self, name, highlight):
-        if name in kwlist:
-            hue, sat, val = 0., 0., 1.
-            bold = True
-        else:
-            hue, sat, val = self.colormap[name]
-            bold = False
-            if highlight:
-                bold = True
-            else:
-                val = 0.2
-
+    def get_ansi_tpl(self, hue, sat, val, bold=False):
         r, g, b = colorsys.hsv_to_rgb(hue, sat, val)
         r = int(round(r*5))
         g = int(round(g*5))
@@ -288,39 +286,80 @@ class ColoredVariablesFormatter(FrameFormatter):
         code_tpl = ('\u001b[%s38;5;%dm' % (bold_tp, point)) + '%s\u001b[0m'
         return code_tpl
 
+    # def get_ansi_color_tpl(self, name, highlight):
+    #     if name in kwlist:
+    #         hue, sat, val = 0., 0., 1.
+    #         bold = True
+    #     else:
+    #         hue, sat, val = self.colormap[name]
+    #         bold = False
+    #         if highlight:
+    #             bold = True
+    #         else:
+    #             val = 0.2
 
-    def process_source(self, fi, context):
-        self.colormap = {name: self.pick_color(name) for name in fi.name2lines if name not in kwlist}
-        colored_source_map = self.color_names_in_source(fi.source_map, fi.name_map, fi.lineno)
+    #     return self.get_ansi_tpl(hue, sat, val, bold)
 
-        return colored_source_map
+    def format_source(self, source_map, context, lineno):
+        bold_tp = self.get_ansi_tpl(0.,0.,0.8, True)
+        default_tpl = self.get_ansi_tpl(0.,0.,0.8, False)
+        comment_tpl = self.get_ansi_tpl(0.,0.,0.4, False)
 
-    def color_names_in_source(self, source_map, line2names, lineno):
+        source_lines = OrderedDict()
+        colormap = {}
+        for ln in context:
+            mark = (ln == lineno)
+            line = ''
+            for snippet, ttype, _ in source_map[ln]:
+                if ttype in [ex.KEYWORD, ex.OP]:
+                    line += bold_tp % snippet
+                elif ttype == ex.VAR:
+                    if snippet not in colormap:
+                        colormap[snippet] = self.pick_color(snippet)
+                    hue, sat, val = colormap[snippet]
+                    val = val if mark else 0.5
+                    var_tpl = self.get_ansi_tpl(hue, sat, val)
+                    line += var_tpl % snippet
+                elif ttype == ex.COMMENT:
+                    line += comment_tpl % snippet
+                else:
+                    line += default_tpl % snippet
+            source_lines[ln] = line
+        self.colormap = colormap
+        return source_lines
 
-        colored_source_map = OrderedDict()
-        for ln, line in source_map.items():
-            highlight = (ln == lineno)
-            col_offset = 0
-            plan = sorted(line2names[ln], key=lambda oc: oc[1])
-            for (name, scol, ecol) in plan:
-                scol += col_offset
-                ecol += col_offset
-                before = line[:scol]
-                after = line[ecol:]
+    # def process_source(self, fi, context):
+    #     self.colormap = {name: self.pick_color(name) for name in fi.name2lines if name not in kwlist}
+    #     colored_source_map = self.color_names_in_source(fi.source_map, fi.name_map, fi.lineno)
 
-                color_tpl = self.get_ansi_color_tpl(name, highlight)
-                colored_name = color_tpl % name
-                line = before + (colored_name) + after
-                col_offset += len(colored_name) - len(name)
+    #     return colored_source_map
 
-            colored_source_map[ln] = line
-        return colored_source_map
+    # def color_names_in_source(self, source_map, line2names, lineno):
+
+    #     colored_source_map = OrderedDict()
+    #     for ln, line in source_map.items():
+    #         highlight = (ln == lineno)
+    #         col_offset = 0
+    #         plan = sorted(line2names[ln], key=lambda oc: oc[1])
+    #         for (name, scol, ecol) in plan:
+    #             scol += col_offset
+    #             ecol += col_offset
+    #             before = line[:scol]
+    #             after = line[ecol:]
+
+    #             color_tpl = self.get_ansi_color_tpl(name, highlight)
+    #             colored_name = color_tpl % name
+    #             line = before + (colored_name) + after
+    #             col_offset += len(colored_name) - len(name)
+
+    #         colored_source_map[ln] = line
+    #     return colored_source_map
 
 
-    def format_assignment(self, name, value, occurrences, lineno):
-        color = self.get_ansi_color_tpl(name, (lineno in occurrences))
-        val_str = self.format_value(name, value)
-        return self.val_tpl % (color % name, color % val_str)
+    # def format_assignment(self, name, value, occurrences, lineno):
+    #     color = self.get_ansi_color_tpl(name, (lineno in occurrences))
+    #     val_str = self.format_value(name, value)
+    #     return self.val_tpl % (color % name, color % val_str)
 
 
 def format_tb(frameinfos, formatter=None, terse_formatter=None, reverse_order=False):
@@ -368,8 +407,8 @@ def format(etype, evalue, tb, show_full=True, show_summary=False,
     if show_full:
         if show_summary:
             msg += "\n\n========== Full traceback: ==========\n"
-        formatter = VerboseFormatter(**formatter_kwargs)
-        # formatter = ColoredVariablesFormatter(**formatter_kwargs)
+        # formatter = VerboseFormatter(**formatter_kwargs)
+        formatter = ColoredVariablesFormatter(**formatter_kwargs)
         terse_formatter = MinimalFormatter(**formatter_kwargs)
 
         msg += format_tb(frameinfos, formatter, terse_formatter, reverse_order)
