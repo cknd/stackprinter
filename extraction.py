@@ -208,7 +208,7 @@ def _tokenize(source_lines):
                 continue
             elif string == '(':
                 open_parens += 1
-                if was_name and not was_dot_continuation:
+                if was_name:# and not was_dot_continuation:
                     # the name we just found is a call or a definition
                     # TODO why again are we interested in this? only to omit
                     # the function signature in our list of names? but

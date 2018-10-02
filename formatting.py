@@ -262,7 +262,7 @@ class ColoredVariablesFormatter(FrameFormatter):
     def __init__(self, *args, **kwargs):
         self.rng = random.Random()
         main_tpl_b = self.get_ansi_tpl(0.35, 0., 1., True)
-        main_tpl_n = self.get_ansi_tpl(0.35, 0., 0.5, False)
+        main_tpl_n = self.get_ansi_tpl(0.35, 0., 0.7, False)
         self.headline_tpl = main_tpl_b % super().headline_tpl
         self.sourceline_tpl = main_tpl_n % super().sourceline_tpl
         self.marked_sourceline_tpl = main_tpl_b % super().marked_sourceline_tpl
@@ -307,10 +307,13 @@ class ColoredVariablesFormatter(FrameFormatter):
 
         source_lines = OrderedDict()
         colormap = {}
+        ct_min, ct_max = min(context), max(context)
         for ln in context:
             mark = (ln == lineno)
             line = ''
             for snippet, ttype, _ in source_map[ln]:
+                # if snippet == 'np.sum':
+                #     import pdb; pdb.set_trace()
                 if ttype in [ex.KEYWORD, ex.OP]:
                     line += bold_tp % snippet
                 elif ttype == ex.VAR:
@@ -320,6 +323,8 @@ class ColoredVariablesFormatter(FrameFormatter):
                     val = val if mark else 0.5
                     var_tpl = self.get_ansi_tpl(hue, sat, val)
                     line += var_tpl % snippet
+                elif ttype == ex.CALL:
+                    line += bold_tp % snippet
                 elif ttype == ex.COMMENT:
                     line += comment_tpl % snippet
                 else:
