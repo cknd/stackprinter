@@ -4,6 +4,8 @@ from keyword import kwlist
 from collections import defaultdict, OrderedDict, namedtuple
 from io import BytesIO
 from typing import Dict, Tuple, List
+import re
+import linecache
 
 FrameInfo = namedtuple('FrameInfo',
                        ['filename', 'function', 'lineno', 'source_map',
@@ -45,11 +47,29 @@ def inspect_tb(tb):
     """
     # all the line nrs in all returned structures are true (absolute) nrs
     """
+
     frame = tb.tb_frame
     lineno = tb.tb_lineno
-    finfo = inspect.getframeinfo(frame)
-    filename, function = finfo.filename, finfo.function
-    source, startline = get_source(frame)
+    filename = inspect.getsourcefile(frame) or inspect.getfile(frame)
+    function = frame.f_code.co_name
+
+    # source = linecache.getlines(filename)
+    # lnum = tb.tb_frame.f_code.co_firstlineno
+
+    # # from inspect
+    # lines = source
+    # lnum = tb.tb_frame.f_code.co_firstlineno - 1
+    # pat = re.compile(r'^(\s*def\s)|(\s*async\s+def\s)|(.*(?<!\w)lambda(:|\s))|^(\s*@)')
+    # while lnum > 0:
+    #     if pat.match(lines[lnum]): break
+    #     lnum = lnum - 1
+    # ...
+    # startline = lnum
+
+    import time; tic = time.perf_counter()
+    source, startline = get_source(frame)  # can be slow for modules the first time, because getmodule, which seems to do nothing except update the line cache
+    print((time.perf_counter() - tic) * 1000)
+
 
     source_map, line2names, name2lines, head_lns = annotate(source, startline)
 
@@ -61,6 +81,8 @@ def inspect_tb(tb):
 
     finfo =  FrameInfo(filename, function, lineno, source_map, head_lns,
                        line2names, name2lines, assignments)
+
+
     return finfo
 
 
@@ -79,8 +101,13 @@ def get_source(frame):
     startline : int
         location of lines[0] in the original source file
     """
+
+    # import pdb; pdb.set_trace()
+
     if frame.f_code.co_name in NON_FUNCTION_SCOPES:
+        # import time; tic = time.perf_counter()
         lines, _ = inspect.findsource(frame)
+        # print(frame.f_code.co_name, (time.perf_counter() - tic) * 1000)
         startline = 1
     else:
         lines, startline = inspect.getsourcelines(frame)

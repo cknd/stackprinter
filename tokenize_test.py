@@ -5,7 +5,7 @@ from extraction import annotate
 source_lines, startline = inspect.getsourcelines(inspect)
 
 tic = time.perf_counter()
-annotated_lines, name_map, header_lines = annotate(source_lines, max_line=2000)
+annotated_lines, l2n, n2l, header_lines = annotate(source_lines, max_line=2000)
 took = time.perf_counter() - tic
 
 

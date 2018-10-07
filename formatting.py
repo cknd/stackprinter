@@ -15,6 +15,15 @@ import colorsys
 import random
 
 
+def printline(regions, ln=None,  **kw):
+
+    print("%s: %s" % (ln, ' '.join(repr(tup[0]) for tup in regions)), **kw)
+
+def print_sm(source_map):
+    for ln in source_map:
+        printline(source_map[ln], ln)
+
+
 ## TODO decide whether anything that doesn't use self needs to be in the class
 
 
@@ -22,7 +31,7 @@ class FrameFormatter():
     headline_tpl = "File %s, line %s, in %s\n"
     sourceline_tpl = "    %-3s %s"
     marked_sourceline_tpl = "--> %-3s %s"
-
+    elipsis_tpl = " (...)\n"
     sep_vars = "    %s\n" % ('.' * 50)
     sep_source_below = ""
     var_indent = "        "
@@ -64,6 +73,7 @@ class FrameFormatter():
         self.show_vals = show_vals
         self.show_signature = show_signature
         self.truncate_vals = int(truncate_vals)
+        self.colormap = {}
 
     def _validate_args(self, source_context, show_vals):
         if not (isinstance(source_context, int) or source_context == 'frame'):
@@ -73,30 +83,26 @@ class FrameFormatter():
         if show_vals not in valid_gv:
             raise ValueError("show_vals must be one of %s" % str(valid_gv))
 
-
     def format_frame(self, fi):
         if not isinstance(fi, FrameInfo):
             raise ValueError("Expected a FrameInfo tuple. "\
                              "extraction.inspect_tb() makes those.")
 
+        return self._format_frame(fi)
+
+    def _format_frame(self, fi):
         msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
-        source_context, val_context = self.select_visible_lines(fi)
+        source_map, assignments = self.select_scope(fi)
 
-        if source_context:
-            source_lines = self.format_source(fi.source_map, source_context, fi.lineno)
-            msg += self.format_listing(source_lines, fi.lineno, source_context)
+        if source_map:
+            lines = self.format_source(source_map)
+            msg += self.format_listing(lines, fi.lineno)
 
-        if val_context:
-            visible_names = set(name for ln in val_context
-                                        for name in fi.line2names[ln])
-            msg += self.sep_vars
-            msg += self.format_vars(fi.assignments, visible_names)
-            msg += self.sep_vars
-            msg += '\n'
-
+        if assignments:
+            msg += self.format_assignments(assignments)
         return msg
 
-    def select_visible_lines(self, fi):
+    def select_scope(self, fi):
         minl, maxl = min(fi.source_map), max(fi.source_map)
         lineno = fi.lineno
 
@@ -107,7 +113,6 @@ class FrameFormatter():
         elif self.source_context == 'frame':
             source_lines = range(minl, maxl)
         elif self.source_context > 1:
-
             start = max(lineno - (self.source_context - 1), 0)
             stop = lineno + 1
             start = max(start, minl)
@@ -115,11 +120,12 @@ class FrameFormatter():
             source_lines = list(range(start, stop+1))
             if self.show_signature:
                 source_lines = sorted(set(source_lines) | set(fi.head_lns))
+                # import pdb; pdb.set_trace()
 
-        # for ln in source_lines:
-        #     print(ln, ''.join(ch[0] for ch in fi.source_map[ln]), end='')
-        # print('---', fi.lineno)
-        # import pdb; pdb.set_trace()
+        if source_lines:
+            trimmed_source_map = self.trim_source(fi.source_map, source_lines)
+        else:
+            trimmed_source_map = {}
 
         if self.show_vals:
             if self.show_vals == 'frame':
@@ -128,61 +134,57 @@ class FrameFormatter():
                 val_lines = source_lines
             elif self.show_vals == 'line':
                 val_lines = [lineno]
+
+            visible_vars = (name for ln in val_lines
+                                    for name in fi.line2names[ln]
+                                        if name in fi.assignments)
+
+            visible_assignments = OrderedDict([(n, fi.assignments[n])
+                                               for n in visible_vars])
         else:
-            val_lines = []
-        return source_lines, val_lines
+            visible_assignments = {}
 
-    def format_source(self, source_map, context, lineno):
-        source_lines = OrderedDict()
-        for ln in context:
-            line = ''.join(snippet for snippet, ttype, _ in source_map[ln])
-            source_lines[ln] = line
-        return source_lines
 
-    def format_listing(self, source_lines, lineno, context):
-        lines = [source_lines[ln] for ln in context]
-        lines = self.trim_whitespace(lines)
+        return trimmed_source_map, visible_assignments
 
-        n_context = len(context)
+    def format_source(self, source_map):
+        lines = OrderedDict()
+        for ln in sorted(source_map):
+            lines[ln] = ''.join(st for st, _, _ in source_map[ln])
+        return lines
+
+    def format_listing(self, lines, lineno):
         ln_prev = None
         msg = ""
-
-        for ln, line in zip(context, lines):
+        for ln in sorted(lines):
+            line = lines[ln]
             if ln_prev and ln_prev != ln - 1:
-                msg += "(...)\n"
+                msg += self.elipsis_tpl
             ln_prev = ln
-            if n_context > 1:
-                if ln == lineno:
-                    tpl = self.marked_sourceline_tpl
-                else:
-                    tpl = self.sourceline_tpl
-                msg += tpl % (ln, line)
+
+            if ln == lineno:
+                tpl = self.marked_sourceline_tpl
             else:
-                msg = '   ' + line
+                tpl = self.sourceline_tpl
+            msg += tpl % (ln, line)
 
         msg += self.sep_source_below
         return msg
 
-    def format_vars(self, assignments, visible_names):
+    def format_assignments(self, assignments):
         msgs = []
         for name, value in assignments.items():
-            if name in visible_names:
-                msgs.append(self.format_assignment(name, value))
-        msg = ''.join(msgs)
+            val_str = self.format_value(value, indent=len(name) + 3)
+            assign_str = self.val_tpl % (name, val_str)
+            msgs.append(assign_str)
+        msg = self.sep_vars + ''.join(msgs) + self.sep_vars + '\n'
         return msg
 
-    def format_assignment(self, name, value):
-        val_str = self.format_value(name, value)
-        return self.val_tpl % (name, val_str)
-
-    def format_value(self, name, value):
-        indent = len(name) + 3
-
-
+    def format_value(self, value, indent=0):
         if isinstance(value, UnresolvedAttribute):
             reason = "# %s: '%s'" % (value.exc_type, value.first_failed)
             val_tpl = reason + "\n%s = %s"
-            lastval_str = self.format_value('   ', value.last_resolvable_value)
+            lastval_str = self.format_value(value.last_resolvable_value, 3)
             val_str = val_tpl % (value.last_resolvable_name, lastval_str)
             indent = 0
 
@@ -209,13 +211,14 @@ class FrameFormatter():
 
     def format_array(self, arr):
         if arr.ndim >= 1:
-            shape_str = "x".join(str(d) for d in arr.shape)
+            shape_str = repr(arr.shape)
+            # shape_str = "x".join(str(d) for d in arr.shape)
             if len(shape_str) < 10:
-                prefix = shape_str + " array("
+                prefix = "%s array(" % shape_str
                 msg = prefix
             else:
                 prefix = ""
-                msg = shape_str + " array(\n"
+                msg = "%s array(\n" % shape_str
         else:
             msg = prefix = "array("
 
@@ -225,17 +228,54 @@ class FrameFormatter():
         msg += suffix
         return msg
 
-    def trim_whitespace(self, lines):
-        # TODO move to utils
-        min_padding = 9000
-        for line in lines:
-            line = line.replace('\t', '    ')
-            n_nonwhite = len(line.lstrip())
-            if n_nonwhite > 0:
-                leading_spaces = len(line) - n_nonwhite
-                min_padding = min(leading_spaces, min_padding)
-        pad = ' ' * min_padding
-        return [line.replace(pad, '', 1) for line in lines]
+
+
+    def trim_source(self, source_map, context):
+        # print('UNPROCESSED:')
+        # print_sm(source_map)
+        # print('--\n\n')
+        indent_type = None
+        min_indent = 9000
+        for ln in context:
+            (snippet0, *meta0), *remaining_line = source_map[ln]
+
+            # printline(source_map[ln], ln)
+
+            if snippet0.startswith('\t'):
+                if indent_type == ' ':
+                    raise Exception('expected tabs')  # TODO remove
+                    # Mixed tabs and spaces - not trimming whitespace.
+                    return source_map
+                else:
+                    indent_type = '\t'
+            elif snippet0.startswith(' '):
+                if indent_type == '\t':
+                    # Mixed tabs and spaces - not trimming whitespace.
+                    raise Exception('expected spaces') # TODO remove
+                    return source_map
+                else:
+                    indent_type = ' '
+            elif snippet0.startswith('\n'):
+                continue
+
+            n_nonwhite = len(snippet0.lstrip(' \t'))
+            indent = len(snippet0) - n_nonwhite
+            # import pdb; pdb.set_trace()
+            min_indent = min(indent, min_indent)
+
+        trimmed_source_map = OrderedDict()
+        for ln in context:
+            (snippet0, *meta0), *remaining_line = source_map[ln]
+            if not snippet0.startswith('\n'):
+                snippet0 = snippet0[min_indent:]
+            trimmed_source_map[ln] = [[snippet0] + meta0] + remaining_line
+
+        # print('PROCESSED')
+        # print_sm(trimmed_source_map)
+        # import pdb; pdb.set_trace()
+
+
+        return trimmed_source_map
 
 
 class InsanelyVerboseFormatter(FrameFormatter):
@@ -259,22 +299,61 @@ class MinimalFormatter(FrameFormatter):
 
 class ColoredVariablesFormatter(FrameFormatter):
 
+    highlight_val = 1.
+    default_val = 0.6
+
     def __init__(self, *args, **kwargs):
         self.rng = random.Random()
-        main_tpl_b = self.get_ansi_tpl(0.35, 0., 1., True)
-        main_tpl_n = self.get_ansi_tpl(0.35, 0., 0.7, False)
-        self.headline_tpl = main_tpl_b % super().headline_tpl
-        self.sourceline_tpl = main_tpl_n % super().sourceline_tpl
-        self.marked_sourceline_tpl = main_tpl_b % super().marked_sourceline_tpl
-        self.sep_vars = main_tpl_n % super().sep_vars
+        bright = self.get_ansi_tpl(0, 0, 1., True)
+        medium = self.get_ansi_tpl(0, 0, 0.7, True)
+        darker = self.get_ansi_tpl(0, 0, 0.4, False)
+        dark = self.get_ansi_tpl(0, 0, 0.1, True)
+        self.headline_tpl = bright % super().headline_tpl
+        self.sourceline_tpl = dark % super().sourceline_tpl
+        self.marked_sourceline_tpl = medium % super().marked_sourceline_tpl
+        self.elipsis_tpl = darker % super().elipsis_tpl
+        self.sep_vars = darker % super().sep_vars
         super().__init__(*args, **kwargs)
 
-    def pick_color(self, name):
-        self.rng.seed(name)
-        hue = self.rng.uniform(0,1.)
-        sat = 1.0
-        val = 1.0
-        return (hue, sat, val)
+    def _format_frame(self, fi):
+        msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
+        source_map, assignments = self.select_scope(fi)
+
+        colormap = self.pick_colors(source_map, assignments, fi.lineno)
+
+        if source_map:  # TODO is this if necessary? what happens below with an empty sourcemap?
+            lines = self.format_source(source_map, colormap, fi.lineno)
+            msg += self.format_listing(lines, fi.lineno)
+
+        msg += self.format_assignments(assignments, colormap)
+        return msg
+
+    def pick_colors(self, source_map, assignments, lineno):
+        colormap = {}
+        for ln in source_map:
+            highlight = (ln == lineno)
+            for name, ttype, _ in source_map[ln]:
+                if ttype == ex.VAR and name in assignments:
+                    clr = self._pick_color(name, assignments[name], highlight)
+                    colormap[name] = clr
+        return colormap
+
+    def _pick_color(self, name, val, highlight=False, mode='repr'):
+        if mode == 'repr':
+            seed = repr(val)
+        elif mode == 'id':
+            seed = id(val)
+        elif mode == 'name':
+            seed = name
+        else:
+            raise ValueError('Unkwnown color mode: %s' % mode)
+        self.rng.seed(seed)
+        hue = self.rng.uniform(-0.05,0.66)
+        if hue < 0:
+            hue = hue + 1
+        sat = 1.
+        val = self.highlight_val if highlight else self.default_val
+        return (hue, sat, val, highlight)
 
     def get_ansi_tpl(self, hue, sat, val, bold=False):
         r, g, b = colorsys.hsv_to_rgb(hue, sat, val)
@@ -286,43 +365,26 @@ class ColoredVariablesFormatter(FrameFormatter):
         code_tpl = ('\u001b[%s38;5;%dm' % (bold_tp, point)) + '%s\u001b[0m'
         return code_tpl
 
-    # def get_ansi_color_tpl(self, name, highlight):
-    #     if name in kwlist:
-    #         hue, sat, val = 0., 0., 1.
-    #         bold = True
-    #     else:
-    #         hue, sat, val = self.colormap[name]
-    #         bold = False
-    #         if highlight:
-    #             bold = True
-    #         else:
-    #             val = 0.2
+    def format_source(self, source_map, colormap, lineno):
 
-    #     return self.get_ansi_tpl(hue, sat, val, bold)
-
-    def format_source(self, source_map, context, lineno):
-        bold_tp = self.get_ansi_tpl(0.,0.,0.8, True)
-        default_tpl = self.get_ansi_tpl(0.,0.,0.8, False)
-        comment_tpl = self.get_ansi_tpl(0.,0.,0.4, False)
+        bold_tp =     self.get_ansi_tpl(0.,0.,1., True)
+        default_tpl = self.get_ansi_tpl(0.,0.,0.7, False)
+        comment_tpl = self.get_ansi_tpl(0.,0.,0.2, False)
 
         source_lines = OrderedDict()
-        colormap = {}
-        ct_min, ct_max = min(context), max(context)
-        for ln in context:
-            mark = (ln == lineno)
+        for ln in source_map:
             line = ''
             for snippet, ttype, _ in source_map[ln]:
-                # if snippet == 'np.sum':
-                #     import pdb; pdb.set_trace()
                 if ttype in [ex.KEYWORD, ex.OP]:
                     line += bold_tp % snippet
                 elif ttype == ex.VAR:
                     if snippet not in colormap:
-                        colormap[snippet] = self.pick_color(snippet)
-                    hue, sat, val = colormap[snippet]
-                    val = val if mark else 0.5
-                    var_tpl = self.get_ansi_tpl(hue, sat, val)
-                    line += var_tpl % snippet
+                        line += default_tpl % snippet
+                    else:
+                        hue, sat, val, bold = colormap[snippet]
+                        val = self.highlight_val if (ln == lineno) else self.default_val
+                        var_tpl = self.get_ansi_tpl(hue, sat, val, bold)
+                        line += var_tpl % snippet
                 elif ttype == ex.CALL:
                     line += bold_tp % snippet
                 elif ttype == ex.COMMENT:
@@ -330,41 +392,18 @@ class ColoredVariablesFormatter(FrameFormatter):
                 else:
                     line += default_tpl % snippet
             source_lines[ln] = line
-        self.colormap = colormap
+
         return source_lines
 
-    # def process_source(self, fi, context):
-    #     self.colormap = {name: self.pick_color(name) for name in fi.name2lines if name not in kwlist}
-    #     colored_source_map = self.color_names_in_source(fi.source_map, fi.name_map, fi.lineno)
-
-    #     return colored_source_map
-
-    # def color_names_in_source(self, source_map, line2names, lineno):
-
-    #     colored_source_map = OrderedDict()
-    #     for ln, line in source_map.items():
-    #         highlight = (ln == lineno)
-    #         col_offset = 0
-    #         plan = sorted(line2names[ln], key=lambda oc: oc[1])
-    #         for (name, scol, ecol) in plan:
-    #             scol += col_offset
-    #             ecol += col_offset
-    #             before = line[:scol]
-    #             after = line[ecol:]
-
-    #             color_tpl = self.get_ansi_color_tpl(name, highlight)
-    #             colored_name = color_tpl % name
-    #             line = before + (colored_name) + after
-    #             col_offset += len(colored_name) - len(name)
-
-    #         colored_source_map[ln] = line
-    #     return colored_source_map
-
-
-    # def format_assignment(self, name, value, occurrences, lineno):
-    #     color = self.get_ansi_color_tpl(name, (lineno in occurrences))
-    #     val_str = self.format_value(name, value)
-    #     return self.val_tpl % (color % name, color % val_str)
+    def format_assignments(self, assignments, colormap):
+        msgs = []
+        for name, value in assignments.items():
+            val_str = self.format_value(value, indent=len(name) + 3)
+            assign_str = self.val_tpl % (name, val_str)
+            clr_str = self.get_ansi_tpl(*colormap[name]) % assign_str
+            msgs.append(clr_str)
+        msg = self.sep_vars + ''.join(msgs) + self.sep_vars + '\n'
+        return msg
 
 
 def format_tb(frameinfos, formatter=None, terse_formatter=None, reverse_order=False):
@@ -377,10 +416,12 @@ def format_tb(frameinfos, formatter=None, terse_formatter=None, reverse_order=Fa
 
     tb_strings = []
     for fi in frameinfos:
-        if 'site-packages' in fi.filename:
-            tb_strings.append(terse_formatter.format_frame(fi))
-        else:
-            tb_strings.append(formatter.format_frame(fi))
+        # if 'site-packages' in fi.filename:
+        #     tb_strings.append(terse_formatter.format_frame(fi))
+        # else:
+        #     tb_strings.append(formatter.format_frame(fi))
+
+        tb_strings.append(formatter.format_frame(fi))
 
     if reverse_order:
         tb_strings = reversed(tb_strings)
@@ -398,8 +439,11 @@ def format_summary(frameinfos, reverse_order=False):
 
 def format(etype, evalue, tb, show_full=True, show_summary=False,
            reverse_order=False, **formatter_kwargs):
-
+    import time
+    tic = time.perf_counter()
     frameinfos = list(walk_tb(tb))
+    took = time.perf_counter() - tic
+    timermsg = 'extraction took %s' % took*1000
     exception_msg = ' '.join(traceback.format_exception_only(etype, evalue))
 
     if show_summary:
@@ -418,6 +462,8 @@ def format(etype, evalue, tb, show_full=True, show_summary=False,
 
         msg += format_tb(frameinfos, formatter, terse_formatter, reverse_order)
         msg += exception_msg
+
+    msg += 'extraction took %s' % (took*1000)
     return msg
 
 

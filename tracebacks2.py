@@ -26,6 +26,7 @@ if __name__ == '__main__':
         do_something = lambda val: another_broken_function(val + outer_scope_thing)
         for k in X:
             if np.sum(k) != 0:
+                # raise Exception()
                 listcomp = [[do_something(val) for val in row] for row in X]
 
     def some_function(boing, zap='!'):
@@ -35,9 +36,9 @@ if __name__ == '__main__':
 
     def another_broken_function(val):
         if val != 42:
-            raise Exception('something happened')
+            # raise Exception('something happened')
             # np.reshape([1,2,3], 9000)
-            # val.nonexistant_attribute()
+            val.nonexistant()
 
     # some_function("hello")
     try:
@@ -45,5 +46,10 @@ if __name__ == '__main__':
     except:
         stuff = sys.exc_info()
         scopidoped = 'gotcha'
+        tic = time.perf_counter()
+
         tb_string = format(*stuff)
+
+        took = time.perf_counter() - tic
         print(tb_string)
+        print('took', took * 1000)
