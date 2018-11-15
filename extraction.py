@@ -1,5 +1,5 @@
 # TODO / Idea: Support [] lookups just like . lookups
-
+import types
 import inspect
 from source_inspection import annotate
 from collections import OrderedDict, namedtuple
@@ -71,17 +71,23 @@ def walk_tb(tb):
     TODO
     """
     while tb:
-        yield inspect_tb(tb)
+        yield inspect_frame(tb)
         tb = tb.tb_next
 
 
-def inspect_tb(tb):
+def inspect_frame(tb):
     """
     # all the line nrs in all returned structures are true (absolute) nrs
     """
+    if isinstance(tb, types.TracebackType):
+        lineno = tb.tb_lineno
+        frame = tb.tb_frame
+    elif isinstance(tb, types.FrameType):
+        frame = tb
+        lineno = frame.f_lineno
+    else:
+        raise ValueError('Cant inspect this: ' + repr(tb))
 
-    frame = tb.tb_frame
-    lineno = tb.tb_lineno
     filename = inspect.getsourcefile(frame) or inspect.getfile(frame)
     function = frame.f_code.co_name
 

@@ -5,7 +5,8 @@ from io import BytesIO
 
 
 # TODO use ints after debugging is finished
-# TODO move to top level module so both here and formatting can use them
+# TODO move to separate module so both here and formatting can import * them
+# or mazbe to _init_? does that work
 VAR = 'VAR'
 KEYWORD = 'KW'
 CALL = 'CALL'
@@ -15,16 +16,22 @@ COMMENT = 'COMMENT'
 
 
 def _tokenize(source_lines):
-    source = "".join(source_lines)
+    """
+    Split a list of source lines into tokens
+
+    This returns a list of
 
 
-    # tokenize insists on reading from a byte buffer/file, but we
-    # already have our source as a very nice string, thank you.
-    # So we pack it up again:
+    """
+    # This is a trick used by the `inspect` standard lib module:
+    tokenizer = tokenize.generate_tokens(iter(source_lines).__next__)
+    # More details: generate_tokens() is an undocumented method :/. But the
+    # official tokenize.tokenize() insists on getting a `readline` function.
+    # This would require us to pack up our nice list strings again, like this:
+    #   source = "".join(source_lines)
+    #   source_bytes = BytesIO(source.encode('utf-8')).readline
+    #   tokenizer = tokenize.tokenize(source_bytes)
 
-    # TODO why does inspect.getblock not need to do this?
-    source_bytes = BytesIO(source.encode('utf-8')).readline
-    tokenizer = tokenize.tokenize(source_bytes)
 
     dot_continuation = False
     was_dot_continuation = False
@@ -93,24 +100,6 @@ def _tokenize(source_lines):
 
     return tokens, head_s, head_e
 
-
-#   bla = 4
-#   blub = ahoi.polloi.\
-#                bumfidel.\
-#                  bumfadel
-
-
-
-#   bla = 4
-#   blub = ahoi.polloi.bumfidel.\
-#                # bumfidel.\
-#                  bumfadel
-
-
-#   bla = 4
-#   blub = ahoi.polloi.bumfidel.bumfadel
-#                # bumfidel.
-#                #   bumfadel
 
 
 def join_broken_lines(source_lines):
