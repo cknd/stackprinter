@@ -187,24 +187,34 @@ class FrameFormatter():
         # self.truncate_vals = int(truncate_vals)
         self.colormap = {}
 
+
     def _validate_args(self, fi, source_context, show_vals):
         if not isinstance(fi, ex.FrameInfo):
             raise ValueError("Expected a FrameInfo tuple, got %s" % fi)
 
         if not (isinstance(source_context, int) or source_context == 'frame'):
-            raise ValueError("source_context must be an integer or 'frame', was %s" % source_context)
+            raise ValueError("source_context must be an integer or 'frame'"
+                             ", was %s" % source_context)
 
         valid_gv = ['frame', 'context', 'line', False]
         if show_vals not in valid_gv:
-            raise ValueError("show_vals must be one of %s, was %s" % (str(valid_gv), show_vals))
+            raise ValueError("show_vals must be one of "
+                             "%s, was %s" % (str(valid_gv), show_vals))
 
-    def format_frame(self, fi, source_context=5, show_vals='context', show_signature=True, truncate_vals=500):
+
+    def format_frame(self, fi, source_context=5, show_vals='context',
+                     show_signature=True, truncate_vals=500):
+        """ TODO """
         self._validate_args(fi, source_context, show_vals)
-        return self._format_frame(fi, source_context, show_vals, show_signature, truncate_vals)
+        return self._format_frame(fi, source_context, show_vals,
+                                  show_signature, truncate_vals)
 
-    def _format_frame(self, fi, source_context, show_vals, show_signature, truncate_vals):
+
+    def _format_frame(self, fi, source_context, show_vals,
+                      show_signature, truncate_vals):
         msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
-        source_map, assignments = select_scope(fi, source_context, show_vals, show_signature)
+        source_map, assignments = select_scope(fi, source_context,
+                                               show_vals, show_signature)
 
         if source_map:
             lines = self.format_source(source_map)
@@ -212,7 +222,6 @@ class FrameFormatter():
 
         msg += self.format_assignments(assignments, truncate_vals)
         return msg
-
 
     def format_source(self, source_map):
         lines = OrderedDict()
@@ -241,7 +250,9 @@ class FrameFormatter():
     def format_assignments(self, assignments, truncate=500):
         msgs = []
         for name, value in assignments.items():
-            val_str = format_value(value, indent=len(name) + self.var_indent + 3, truncate=truncate)
+            val_str = format_value(value,
+                                   indent=len(name) + self.var_indent + 3,
+                                   truncate=truncate)
             assign_str = self.val_tpl % (name, val_str)
             msgs.append(assign_str)
         if len(msgs) > 0:
@@ -288,9 +299,11 @@ class ColoredVariablesFormatter(FrameFormatter):
         self.sep_vars = darker % super().sep_vars
         super().__init__(*args, **kwargs)
 
-    def _format_frame(self, fi, source_context, show_vals, show_signature, truncate):
+    def _format_frame(self, fi, source_context, show_vals,
+                      show_signature, truncate):
         msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
-        source_map, assignments = select_scope(fi, source_context, show_vals, show_signature)
+        source_map, assignments = select_scope(fi, source_context,
+                                               show_vals, show_signature)
 
         colormap = self.pick_colors(source_map, assignments, fi.lineno)
 
@@ -378,7 +391,9 @@ class ColoredVariablesFormatter(FrameFormatter):
     def format_assignments(self, assignments, colormap, truncate=500):
         msgs = []
         for name, value in assignments.items():
-            val_str = format_value(value, indent=len(name) + self.var_indent + 3, truncate=truncate)
+            val_str = format_value(value,
+                                   indent=len(name) + self.var_indent + 3,
+                                   truncate=truncate)
             assign_str = self.val_tpl % (name, val_str)
             clr_str = self.get_ansi_tpl(*colormap[name]) % assign_str
             msgs.append(clr_str)

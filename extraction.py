@@ -154,5 +154,4 @@ def lookup(name, scopeA, scopeB):
             return UnresolvedAttribute(basename, attr_path, k, val,
                                        e.__class__.__name__, str(e))
 
-
     return val
