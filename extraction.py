@@ -28,30 +28,18 @@ def get_source(frame):
         location of lines[0] in the original source file
     """
 
-    # import pdb; pdb.set_trace()
-
-
-    # TODO use a raw linecache method that doesnt secretely tokenize
-    # the whole source just to find the interesting block, as inspect does
+    # TODO find out what's faster: Allowing 'findsource' to
+    # tokenize the whole file to find the surrounding code block,
+    # or getting the whole file quickly via linecache & feeding
+    # everything to our own instance of tokenize, then clipping to
+    # desired context afterwards.
 
     if frame.f_code.co_name in NON_FUNCTION_SCOPES:
-        # import time; tic = time.perf_counter()
         lines, _ = inspect.findsource(frame)
-        # print(frame.f_code.co_name, (time.perf_counter() - tic) * 1000)
         startline = 1
     else:
         lines, startline = inspect.getsourcelines(frame)
 
-    # lc_lines = linecache.getlines(frame.f_code.co_filename)
-
-    # find where in the linecache lines the lines from inspect show up
-    # idxs = []
-    # for line in lines:
-    #     idxs.append(lc_lines.index(line))
-
-    # lcl_filtered = [lc_lines[i] for i in idxs]
-    # print(lcl_filtered == lines)
-    # import pdb; pdb.set_trace()
     return lines, startline
 
 
@@ -91,29 +79,15 @@ def inspect_frame(tb):
     filename = inspect.getsourcefile(frame) or inspect.getfile(frame)
     function = frame.f_code.co_name
 
-    # import linecache
-    # import re
-    # source = linecache.getlines(filename)
-    # lnum = tb.tb_frame.f_code.co_firstlineno
-
-    # # from inspect
-    # lines = source
-    # lnum = tb.tb_frame.f_code.co_firstlineno - 1
-    # pat = re.compile(r'^(\s*def\s)|(\s*async\s+def\s)|(.*(?<!\w)lambda(:|\s))|^(\s*@)')
-    # while lnum > 0:
-    #     if pat.match(lines[lnum]): break
-    #     lnum = lnum - 1
-    # ...
-    # startline = lnum
-
-    import time; tic = time.perf_counter()
     try:
-        source, startline = get_source(frame)  # can be slow for modules the first time, because getmodule, which seems to do nothing except update the line cache
+        source, startline = get_source(frame)
+        # this can be slow (tens of ms) the first time it is called, since
+        # inspect.get_source internally calls inspect.getmodule, for no
+        # other purpose than updating the linecache. seems like a bad tradeoff
+        # for our case, but this is not the time & place to fork `inspect`.
     except:
         source = ["# no source code found\n"]
         startline = lineno
-
-    print((time.perf_counter() - tic) * 1000)
 
     source_map, line2names, name2lines, head_lns, lineno = annotate(source, startline, lineno)
 
