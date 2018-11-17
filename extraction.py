@@ -12,38 +12,7 @@ FrameInfo = namedtuple('FrameInfo',
 NON_FUNCTION_SCOPES =  ['<module>', '<lambda>', '<listcomp>']
 
 
-def get_source(frame):
-    """
-    get source lines for this frame
-
-    Params
-    ---
-    frame : frame object
-
-    Returns
-    ---
-    lines : list of str
-
-    startline : int
-        location of lines[0] in the original source file
-    """
-
-    # TODO find out what's faster: Allowing inspect's getsourcelines
-    # to tokenize the whole file to find the surrounding code block,
-    # or getting the whole file quickly via linecache & feeding all
-    # of it to our own instance of tokenize, then clipping to
-    # desired context afterwards.
-
-    if frame.f_code.co_name in NON_FUNCTION_SCOPES:
-        lines, _ = inspect.findsource(frame)
-        startline = 1
-    else:
-        lines, startline = inspect.getsourcelines(frame)
-
-    return lines, startline
-
-
-def walk_tb(tb):
+def walk_traceback(tb):
     """
     Follow the call stack, collecting source lines & variable values
 
@@ -62,7 +31,7 @@ def walk_tb(tb):
         tb = tb.tb_next
 
 
-def walk_stack(frame):
+def walk_frame(frame):
     """
     TODO
     """
@@ -115,6 +84,36 @@ def inspect_frame(tb):
 
     return finfo
 
+
+def get_source(frame):
+    """
+    get source lines for this frame
+
+    Params
+    ---
+    frame : frame object
+
+    Returns
+    ---
+    lines : list of str
+
+    startline : int
+        location of lines[0] in the original source file
+    """
+
+    # TODO find out what's faster: Allowing inspect's getsourcelines
+    # to tokenize the whole file to find the surrounding code block,
+    # or getting the whole file quickly via linecache & feeding all
+    # of it to our own instance of tokenize, then clipping to
+    # desired context afterwards.
+
+    if frame.f_code.co_name in NON_FUNCTION_SCOPES:
+        lines, _ = inspect.findsource(frame)
+        startline = 1
+    else:
+        lines, startline = inspect.getsourcelines(frame)
+
+    return lines, startline
 
 
 def get_vars(names, loc, glob):

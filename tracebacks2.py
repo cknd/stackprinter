@@ -42,7 +42,7 @@ def format(etype, evalue, tb, show_full=True, show_summary=False,
            reverse_order=False, **formatter_kwargs):
     import time
     tice = time.perf_counter()
-    frameinfos = list(ex.walk_tb(tb))
+    frameinfos = list(ex.walk_traceback(tb))
     tooke = time.perf_counter() - tice
 
 
