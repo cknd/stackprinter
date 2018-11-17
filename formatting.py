@@ -6,7 +6,7 @@ from utils import inspect_callable
 
 import colorsys
 import random
-
+import types
 
 def trim_source(source_map, context):
     """
@@ -125,25 +125,75 @@ class FrameFormatter():
     var_indent = 8 #"        "
     val_tpl = ' ' * var_indent + "%s = %s\n"
 
-    def format_frame(self, fi, source_context=5, show_vals='context',
-                     show_signature=True, truncate_vals=500):
-        """ TODO """
-        self._validate_args(fi, source_context, show_vals)
-        return self._format_frame(fi, source_context, show_vals,
-                                  show_signature, truncate_vals)
+    def format_frame(self, frame, source_context=5, show_signature=True,
+                     show_vals='context', truncate_vals=500):
+        """
+        Stringify a single stack frame or traceback entry
 
-    def _validate_args(self, fi, source_context, show_vals):
-        if not isinstance(fi, ex.FrameInfo):
-            raise ValueError("Expected a FrameInfo tuple, got %s" % fi)
+        TODO mention: Also accepts a FrameInfo tuple
+
+
+
+        Params
+        ----
+
+        frame: Frame object, Traceback object (or FrameInfo tuple)
+            The frame or traceback entry to be formatted.
+
+            The only difference between passing a frame or a traceback object is
+            which line gets highlighted in the source listing: For a frame, it's
+            the currently executed line; for a traceback, it's the line where an
+            error occured. (technically: `frame.f_lineno` vs. `tb.tb_lineno`)
+
+            The third option is only interesting if you're planning to format
+            one frame multiple different ways: It's a little faster to format a
+            pre-chewed frame than a normal frame object, since the whole process
+            contains many non-formatting-specific steps like "finding the source
+            code", "finding all the variables" etc. So, this method also accepts
+            the raw results from `extraction.get_info()`, of type FrameInfo. In
+            that case, it will just assemble some strings, no more chewing.
+
+        source_context: int or 'frame'
+            Selects how much source code will be shown.
+            int 0: Don't include a source listing.
+            int >0: Show this nr of lines of code.
+            string 'frame': Show the whole scope of the frame.
+
+        show_signature: bool
+            Always include the function header in the source listing.
+
+        show_vals: str or None
+            Selects which variable assignments will be shown.
+            'line': Show only the variables on the highlighted line.
+            'context': Show any variable visible in the source listing (default).
+            'frame': Show every variable in the scope of the frame.
+            None: Don't show any variable assignments.
+
+        truncate_vals: int
+            Maximum number of characters to be used for each variable value
+
+        """
+
+        accepted_types = (types.FrameType, types.TracebackType, ex.FrameInfo)
+        if not isinstance(frame, accepted_types):
+            raise ValueError("Expected one of these types: "
+                             "%s. Got %r" % (accepted_types, frame))
 
         if not (isinstance(source_context, int) or source_context == 'frame'):
-            raise ValueError("source_context must be an integer or 'frame'"
-                             ", was %s" % source_context)
+            raise ValueError("source_context must be an integer or 'frame', "
+                             "was %s" % source_context)
 
-        valid_gv = ['frame', 'context', 'line', False]
+        valid_gv = ['frame', 'context', 'line', None]
         if show_vals not in valid_gv:
             raise ValueError("show_vals must be one of "
                              "%s, was %s" % (str(valid_gv), show_vals))
+
+        fi = ex.get_info(frame)
+
+        msg = self._format_frame(fi, source_context, show_vals,
+                                  show_signature, truncate_vals)
+        return msg
+
 
     def _format_frame(self, fi, source_context, show_vals,
                       show_signature, truncate_vals):

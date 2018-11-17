@@ -27,11 +27,11 @@ def walk_traceback(tb):
     TODO
     """
     while tb:
-        yield inspect_frame(tb)
+        yield tb
         tb = tb.tb_next
 
 
-def walk_frame(frame):
+def walk_frames(frame):
     """
     TODO
     """
@@ -41,10 +41,10 @@ def walk_frame(frame):
         stack.append(frame)
 
     for fr in reversed(stack):
-        yield inspect_frame(fr)
+        yield fr
 
 
-def inspect_frame(tb):
+def get_info(tb):
     """
     # all the line nrs in all returned structures are true (absolute) nrs
     """
@@ -54,6 +54,8 @@ def inspect_frame(tb):
     elif isinstance(tb, types.FrameType):
         frame = tb
         lineno = frame.f_lineno
+    elif isinstance(tb, FrameInfo):
+        return tb
     else:
         raise ValueError('Cant inspect this: ' + repr(tb))
 
