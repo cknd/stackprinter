@@ -26,32 +26,36 @@ thr = Thread(name='boing', target=forever, daemon=True)
 
 thr.start()
 
-def show_stack(thread):
+
+def add_indent(string):
+    return '    ' + '\n    '.join(string.split('\n')).strip()
+
+def show_stack(thread, suppress=['threading.py']):
     try:
         fr = sys._current_frames()[thread.ident]
     except KeyError:
-        print('cant print stack, thread doesnt exist')
-        return
-
+        return "%r: no active frames found" % thread
 
     stack = [fr]
     while fr.f_back is not None:
         fr = fr.f_back
         stack.append(fr)
 
-    print(thread, '\n')
-    # formatter = formatting.ColoredVariablesFormatter()
-    formatter = formatting.FrameFormatter()
+    msg = "%r\n\n" % thread
+    formatter = formatting.ColoredVariablesFormatter()
+    # formatter = formatting.FrameFormatter()
     for fr in reversed(stack):
-        if 'threading.py' in fr.f_code.co_filename:
-            continue
-        finfo = extraction.inspect_frame(fr)
-        msg = formatter.format_frame(finfo, source_context=7)
-        print('    ' + '\n    '.join(msg.split('\n')))
-
+        if any(pt in fr.f_code.co_filename for pt in suppress):
+            co = fr.f_code
+            frame_msg = "File %s, line %s, in %s\n" % (co.co_filename, fr.f_lineno, co.co_name)
+        else:
+            finfo = extraction.inspect_frame(fr)
+            frame_msg = formatter.format_frame(finfo, source_context=7)
+        msg += add_indent(frame_msg) + '\n'
+    return msg
 
 
 while True:
     print(chr(27) + "[2J") # clear screen
-    show_stack(thr)
+    print(show_stack(thr))
     time.sleep(0.1)

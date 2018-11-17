@@ -122,15 +122,33 @@ def get_vars(names, loc, glob):
     for name in names:
         try:
             val = lookup(name, loc, glob)
-        except UndefinedName:
+        except LookupError:
             pass
         else:
             assignments.append((name, val))
     return OrderedDict(assignments)
 
 
-class UndefinedName(KeyError):
-    pass
+def lookup(name, scopeA, scopeB):
+    basename, *attr_path = name.split('.')
+    if basename in scopeA:
+        val = scopeA[basename]
+    elif basename in scopeB:
+        val = scopeB[basename]
+    else:
+        # not all names in the source file will be
+        # defined (yet) when we get to see the frame
+        raise LookupError(basename)
+
+    for k, attr in enumerate(attr_path):
+        try:
+            val = getattr(val, attr)
+        except Exception as e:
+            return UnresolvedAttribute(basename, attr_path, k, val,
+                                       e.__class__.__name__, str(e))
+
+    return val
+
 
 class UnresolvedAttribute():
     def __init__(self, basename, attr_path, failure_idx, value,
@@ -146,24 +164,3 @@ class UnresolvedAttribute():
     @property
     def last_resolvable_name(self):
         return self.basename + '.'.join([''] + self.attr_path[:self.failure_idx])
-
-
-def lookup(name, scopeA, scopeB):
-    basename, *attr_path = name.split('.')
-    if basename in scopeA:
-        val = scopeA[basename]
-    elif basename in scopeB:
-        val = scopeB[basename]
-    else:
-        # not all names in the source file will be
-        # defined (yet) when we get to see the frame
-        raise UndefinedName(basename)
-
-    for k, attr in enumerate(attr_path):
-        try:
-            val = getattr(val, attr)
-        except Exception as e:
-            return UnresolvedAttribute(basename, attr_path, k, val,
-                                       e.__class__.__name__, str(e))
-
-    return val
