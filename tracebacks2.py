@@ -1,10 +1,7 @@
-from formatting import format, excepthook
-
-def set_excepthook():
-    # TODO add options like colors etc
-    import sys
-    sys.excepthook = excepthook
-
+import sys
+import traceback
+from formatting import FrameFormatter, ColoredVariablesFormatter
+import extraction as ex
 
 
 # TODO:
@@ -13,8 +10,81 @@ def set_excepthook():
 # warrants a full stack inspection
 
 
+def format_tb(frameinfos, formatter=None, reverse_order=False):
+    if formatter is None:
+        formatter = FrameFormatter()
+
+    if not isinstance(frameinfos, list):
+        frameinfos = [frameinfos]
+
+    tb_strings = []
+    for fi in frameinfos:
+        if False: #'site-packages' in fi.filename:
+            tb_strings.append(formatter.format_frame(fi, source_context=1, show_vals=False, show_signature=False))
+        else:
+            tb_strings.append(formatter.format_frame(fi, source_context=15))
+
+    if reverse_order:
+        tb_strings = reversed(tb_strings)
+    return "".join(tb_strings)
+
+
+# def format_summary(frameinfos, reverse_order=False):
+#     msg_inner = format_tb(frameinfos[-1], TerseFormatter(), reverse_order)
+#     msg_outer = format_tb(frameinfos[:-1], MinimalFormatter(), reverse_order)
+#     msg = [msg_outer, msg_inner]
+#     if reverse_order:
+#         msg = reversed(msg)
+#     return "".join(msg)
+
+
+def format(etype, evalue, tb, show_full=True, show_summary=False,
+           reverse_order=False, **formatter_kwargs):
+    import time
+    tice = time.perf_counter()
+    frameinfos = list(ex.walk_tb(tb))
+    tooke = time.perf_counter() - tice
+
+
+    import time; tic = time.perf_counter()
+    exception_msg = ' '.join(traceback.format_exception_only(etype, evalue))
+
+    if show_summary:
+        msg = format_summary(frameinfos, reverse_order)
+        msg += exception_msg
+
+    else:
+        msg = ''
+
+    if show_full:
+        if show_summary:
+            msg += "\n\n========== Full traceback: ==========\n"
+        # formatter = FrameFormatter(**formatter_kwargs)
+        formatter = ColoredVariablesFormatter(**formatter_kwargs)
+        msg += format_tb(frameinfos, formatter, reverse_order)
+        msg += exception_msg
+
+    msg += 'extraction took %s\n' % (tooke*1000)
+    msg += 'formating took %s' % ((time.perf_counter() - tic) * 1000)
+    return msg
+
+
+def excepthook(etype, evalue, tb, **kwargs):
+    tb_message = format(etype, evalue, tb, **kwargs)
+    print(tb_message, file=sys.stderr)
+
+
+def set_excepthook():
+    # TODO add options like colors etc
+    sys.excepthook = excepthook
+
+def reset_exceptook():
+    sys.excepthook = sys.__excepthook__
+
+
+
+
 if __name__ == '__main__':
-    import sys
     import time
     # from tracebacks2 import format
     import numpy as np

@@ -1,5 +1,3 @@
-import sys
-import traceback
 import extraction as ex
 import source_inspection as sc
 from collections import OrderedDict
@@ -10,17 +8,15 @@ import colorsys
 import random
 
 
-
 def trim_source(source_map, context):
-    # print('UNPROCESSED:')
-    # print_sm(source_map)
-    # print('--\n\n')
+    """
+    get part of a source listing, with extraneous indentation removed
+
+    """
     indent_type = None
     min_indent = 9000
     for ln in context:
         (snippet0, *meta0), *remaining_line = source_map[ln]
-
-        # printline(source_map[ln], ln)
 
         if snippet0.startswith('\t'):
             if indent_type == ' ':
@@ -51,24 +47,13 @@ def trim_source(source_map, context):
             snippet0 = snippet0[min_indent:]
         trimmed_source_map[ln] = [[snippet0] + meta0] + remaining_line
 
-    # print('PROCESSED')
-    # print_sm(trimmed_source_map)
-    # import pdb; pdb.set_trace()
-
-
     return trimmed_source_map
 
 
-# todo remove these - they're just for debug
-def printline(regions, ln=None,  **kw):
-    print("%s: %s" % (ln, ' '.join(repr(tup[0]) for tup in regions)), **kw)
-
-def print_sm(source_map):
-    for ln in source_map:
-        printline(source_map[ln], ln)
-
-
 def select_scope(fi, source_context, show_vals, show_signature, filter=None):
+    """
+    decide which lines of code and which variables will be visible
+    """
     source_lines = []
     minl, maxl = 0, 0
     if len(fi.source_map) > 0:
@@ -103,14 +88,10 @@ def select_scope(fi, source_context, show_vals, show_signature, filter=None):
         elif show_vals == 'line':
             val_lines = [lineno]
 
+        # TODO refactor the whole blacklistling mechanism below
 
         def hidden(name):
-            # todo replace by boolean filter function (name, value) -> bool passed as argument
-
             value = fi.assignments[name]
-            # print(repr(value))
-            # import pdb; pdb.set_trace()
-
             # TODO allow hiding functions & modules whose code lives
             # in the verbosity_blacklist (e.g. site-packages)
             if callable(value):
@@ -134,9 +115,6 @@ def select_scope(fi, source_context, show_vals, show_signature, filter=None):
     return trimmed_source_map, visible_assignments
 
 
-## TODO decide whether anything that doesn't use self needs to be in the class
-
-
 class FrameFormatter():
     headline_tpl = "File %s, line %s, in %s\n"
     sourceline_tpl = "    %-3s %s"
@@ -147,46 +125,12 @@ class FrameFormatter():
     var_indent = 8 #"        "
     val_tpl = ' ' * var_indent + "%s = %s\n"
 
-    def __init__(self,
-                # source_context=5, show_signature=True,
-                #  show_vals='context', truncate_vals=500
-                 ):
-        """
-        Params
-        ---
-
-        source_context : int or 'frame'
-            nr of source lines around the last executed line to show:
-            0: don't show any source lines
-            1: only show the final executed line of each frame (the '-->' line)
-            >1: show several lines around the final line
-            'frame': show the complete source of each frame
-
-        show_vals : string 'frame' | 'context' | 'line' | False
-            Selects which variable assignments to show:
-            'frame': show values of all variables in each frame's source
-            'context': ...only those in the source context (as chosen above)
-            'line': ...only those in the final line of each frame ('-->')
-            None|False: don't retrieve any variable values.
-
-        show_signature : bool
-            only if source_context > 1: always show the first source line,
-            (unless the frame is at the module top level).
-
-        summary_above : bool
-            TODO
-
-        truncate_vals : int or False
-            cut string representations of variable values to this maximum length
-
-        """
-        # self._validate_args(source_context, show_vals)
-        # self.source_context = source_context
-        # self.show_vals = show_vals
-        # self.show_signature = show_signature
-        # self.truncate_vals = int(truncate_vals)
-        self.colormap = {}
-
+    def format_frame(self, fi, source_context=5, show_vals='context',
+                     show_signature=True, truncate_vals=500):
+        """ TODO """
+        self._validate_args(fi, source_context, show_vals)
+        return self._format_frame(fi, source_context, show_vals,
+                                  show_signature, truncate_vals)
 
     def _validate_args(self, fi, source_context, show_vals):
         if not isinstance(fi, ex.FrameInfo):
@@ -201,15 +145,6 @@ class FrameFormatter():
             raise ValueError("show_vals must be one of "
                              "%s, was %s" % (str(valid_gv), show_vals))
 
-
-    def format_frame(self, fi, source_context=5, show_vals='context',
-                     show_signature=True, truncate_vals=500):
-        """ TODO """
-        self._validate_args(fi, source_context, show_vals)
-        return self._format_frame(fi, source_context, show_vals,
-                                  show_signature, truncate_vals)
-
-
     def _format_frame(self, fi, source_context, show_vals,
                       show_signature, truncate_vals):
         msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
@@ -217,19 +152,19 @@ class FrameFormatter():
                                                show_vals, show_signature)
 
         if source_map:
-            lines = self.format_source(source_map)
-            msg += self.format_listing(lines, fi.lineno)
+            lines = self._format_source(source_map)
+            msg += self._format_listing(lines, fi.lineno)
 
-        msg += self.format_assignments(assignments, truncate_vals)
+        msg += self._format_assignments(assignments, truncate_vals)
         return msg
 
-    def format_source(self, source_map):
+    def _format_source(self, source_map):
         lines = OrderedDict()
         for ln in sorted(source_map):
             lines[ln] = ''.join(st for st, _, _ in source_map[ln])
         return lines
 
-    def format_listing(self, lines, lineno):
+    def _format_listing(self, lines, lineno):
         ln_prev = None
         msg = ""
         for ln in sorted(lines):
@@ -247,7 +182,7 @@ class FrameFormatter():
         msg += self.sep_source_below
         return msg
 
-    def format_assignments(self, assignments, truncate=500):
+    def _format_assignments(self, assignments, truncate=500):
         msgs = []
         for name, value in assignments.items():
             val_str = format_value(value,
@@ -261,26 +196,6 @@ class FrameFormatter():
             return ''
 
 
-
-# class InsanelyVerboseFormatter(FrameFormatter):
-#     def __init__(self):
-#         super().__init__(source_context='frame', truncate_vals=10000)
-
-# class VerboseFormatter(FrameFormatter):
-#     # header, 5 lines of source, vals for these lines
-#     def __init__(self):
-#         super().__init__(source_context=5, truncate_vals=500)
-
-# class TerseFormatter(FrameFormatter):
-#     # header, 1 line of source, vals for that one line
-#     def __init__(self):
-#         super().__init__(source_context=1, truncate_vals=70)
-
-# class MinimalFormatter(FrameFormatter):
-#     def __init__(self):
-#         super().__init__(source_context=1, show_vals=False)
-
-
 class ColoredVariablesFormatter(FrameFormatter):
 
     highlight_val = 1.
@@ -288,10 +203,10 @@ class ColoredVariablesFormatter(FrameFormatter):
 
     def __init__(self, *args, **kwargs):
         self.rng = random.Random()
-        bright = self.get_ansi_tpl(0, 0, 1., True)
-        medium = self.get_ansi_tpl(0, 0, 0.7, True)
-        darker = self.get_ansi_tpl(0, 0, 0.4, False)
-        dark = self.get_ansi_tpl(0, 0, 0.1, True)
+        bright = self._get_ansi_tpl(0, 0, 1., True)
+        medium = self._get_ansi_tpl(0, 0, 0.7, True)
+        darker = self._get_ansi_tpl(0, 0, 0.4, False)
+        dark = self._get_ansi_tpl(0, 0, 0.1, True)
         self.headline_tpl = bright % super().headline_tpl
         self.sourceline_tpl = dark % super().sourceline_tpl
         self.marked_sourceline_tpl = medium % super().marked_sourceline_tpl
@@ -305,20 +220,68 @@ class ColoredVariablesFormatter(FrameFormatter):
         source_map, assignments = select_scope(fi, source_context,
                                                show_vals, show_signature)
 
-        colormap = self.pick_colors(source_map, assignments, fi.lineno)
+        colormap = self._pick_colors(source_map, assignments, fi.lineno)
 
         if source_map:  # TODO is this if necessary? what happens below with an empty sourcemap?
-            lines = self.format_source(source_map, colormap, fi.lineno)
-            msg += self.format_listing(lines, fi.lineno)
+            lines = self._format_source(source_map, colormap, fi.lineno)
+            msg += self._format_listing(lines, fi.lineno)
 
-        msg += self.format_assignments(assignments, colormap, truncate)
+        msg += self._format_assignments(assignments, colormap, truncate)
         return msg
 
-    def pick_colors(self, source_map, assignments, lineno):
+    def _format_source(self, source_map, colormap, lineno):
+        bold_tp =     self._get_ansi_tpl(0.,0.,1., True)
+        default_tpl = self._get_ansi_tpl(0.,0.,0.7, False)
+        comment_tpl = self._get_ansi_tpl(0.,0.,0.2, False)
+
+        source_lines = OrderedDict()
+        for ln in source_map:
+            line = ''
+            for snippet, ttype, _ in source_map[ln]:
+                if ttype in [sc.KEYWORD, sc.OP]:
+                    line += bold_tp % snippet
+                elif ttype == sc.VAR:
+                    if snippet not in colormap:
+                        line += default_tpl % snippet
+                    else:
+                        hue, sat, val, bold = colormap[snippet]
+                        val = self.highlight_val if (ln == lineno) else self.default_val
+                        var_tpl = self._get_ansi_tpl(hue, sat, val, bold)
+                        line += var_tpl % snippet
+                elif ttype == sc.CALL:
+                    line += bold_tp % snippet
+                elif ttype == sc.COMMENT:
+                    line += comment_tpl % snippet
+                else:
+                    line += default_tpl % snippet
+            source_lines[ln] = line
+
+        return source_lines
+
+    def _format_assignments(self, assignments, colormap, truncate=500):
+        msgs = []
+        for name, value in assignments.items():
+            val_str = format_value(value,
+                                   indent=len(name) + self.var_indent + 3,
+                                   truncate=truncate)
+            assign_str = self.val_tpl % (name, val_str)
+            clr_str = self._get_ansi_tpl(*colormap[name]) % assign_str
+            msgs.append(clr_str)
+
+        if len(msgs) > 0:
+            return self.sep_vars + ''.join(msgs) + self.sep_vars + '\n'
+        else:
+            return ''
+
+    # TODO move these methods out of the class; move the whole thing
+    # to a separate module
+    def _pick_colors(self, source_map, assignments, lineno):
         # TODO refactor: pick a hash for each name across frames, _then_ color.
-        # This allows an arbitrary color picking rule (no just the seed based one),
-        # which in turn allows an explicit solution to avoid color clashes within
-        # a frame. This will end up being a small constraint satisfaction problem..
+        # Currently, colors are consistent across frames purely because the
+        # map from hashes to colors is bijective. If colors were picked after
+        # all hashes are known, it would be possible to avoiding color clashes
+        # (by solving a little constraint satisfaction problem or something).
+        # It would mean formatters would work on several frames at once, though.
         colormap = {}
         for ln in source_map:
             highlight = (ln == lineno)
@@ -349,7 +312,7 @@ class ColoredVariablesFormatter(FrameFormatter):
         val = self.highlight_val if highlight else self.default_val
         return (hue, sat, val, highlight)
 
-    def get_ansi_tpl(self, hue, sat, val, bold=False):
+    def _get_ansi_tpl(self, hue, sat, val, bold=False):
         r, g, b = colorsys.hsv_to_rgb(hue, sat, val)
         r = int(round(r*5))
         g = int(round(g*5))
@@ -358,111 +321,3 @@ class ColoredVariablesFormatter(FrameFormatter):
         bold_tp = '1;' if bold else ''
         code_tpl = ('\u001b[%s38;5;%dm' % (bold_tp, point)) + '%s\u001b[0m'
         return code_tpl
-
-    def format_source(self, source_map, colormap, lineno):
-        bold_tp =     self.get_ansi_tpl(0.,0.,1., True)
-        default_tpl = self.get_ansi_tpl(0.,0.,0.7, False)
-        comment_tpl = self.get_ansi_tpl(0.,0.,0.2, False)
-
-        source_lines = OrderedDict()
-        for ln in source_map:
-            line = ''
-            for snippet, ttype, _ in source_map[ln]:
-                if ttype in [sc.KEYWORD, sc.OP]:
-                    line += bold_tp % snippet
-                elif ttype == sc.VAR:
-                    if snippet not in colormap:
-                        line += default_tpl % snippet
-                    else:
-                        hue, sat, val, bold = colormap[snippet]
-                        val = self.highlight_val if (ln == lineno) else self.default_val
-                        var_tpl = self.get_ansi_tpl(hue, sat, val, bold)
-                        line += var_tpl % snippet
-                elif ttype == sc.CALL:
-                    line += bold_tp % snippet
-                elif ttype == sc.COMMENT:
-                    line += comment_tpl % snippet
-                else:
-                    line += default_tpl % snippet
-            source_lines[ln] = line
-
-        return source_lines
-
-    def format_assignments(self, assignments, colormap, truncate=500):
-        msgs = []
-        for name, value in assignments.items():
-            val_str = format_value(value,
-                                   indent=len(name) + self.var_indent + 3,
-                                   truncate=truncate)
-            assign_str = self.val_tpl % (name, val_str)
-            clr_str = self.get_ansi_tpl(*colormap[name]) % assign_str
-            msgs.append(clr_str)
-
-        if len(msgs) > 0:
-            return self.sep_vars + ''.join(msgs) + self.sep_vars + '\n'
-        else:
-            return ''
-
-
-def format_tb(frameinfos, formatter=None, reverse_order=False):
-    if formatter is None:
-        formatter = FrameFormatter()
-
-    if not isinstance(frameinfos, list):
-        frameinfos = [frameinfos]
-
-    tb_strings = []
-    for fi in frameinfos:
-        if False: #'site-packages' in fi.filename:
-            tb_strings.append(formatter.format_frame(fi, source_context=1, show_vals=False, show_signature=False))
-        else:
-            tb_strings.append(formatter.format_frame(fi, source_context=15))
-
-    if reverse_order:
-        tb_strings = reversed(tb_strings)
-    return "".join(tb_strings)
-
-
-# def format_summary(frameinfos, reverse_order=False):
-#     msg_inner = format_tb(frameinfos[-1], TerseFormatter(), reverse_order)
-#     msg_outer = format_tb(frameinfos[:-1], MinimalFormatter(), reverse_order)
-#     msg = [msg_outer, msg_inner]
-#     if reverse_order:
-#         msg = reversed(msg)
-#     return "".join(msg)
-
-
-def format(etype, evalue, tb, show_full=True, show_summary=False,
-           reverse_order=False, **formatter_kwargs):
-    import time
-    tice = time.perf_counter()
-    frameinfos = list(ex.walk_tb(tb))
-    tooke = time.perf_counter() - tice
-
-
-    import time; tic = time.perf_counter()
-    exception_msg = ' '.join(traceback.format_exception_only(etype, evalue))
-
-    if show_summary:
-        msg = format_summary(frameinfos, reverse_order)
-        msg += exception_msg
-
-    else:
-        msg = ''
-
-    if show_full:
-        if show_summary:
-            msg += "\n\n========== Full traceback: ==========\n"
-        # formatter = FrameFormatter(**formatter_kwargs)
-        formatter = ColoredVariablesFormatter(**formatter_kwargs)
-        msg += format_tb(frameinfos, formatter, reverse_order)
-        msg += exception_msg
-
-    msg += 'extraction took %s\n' % (tooke*1000)
-    msg += 'formating took %s' % ((time.perf_counter() - tic) * 1000)
-    return msg
-
-
-def excepthook(etype, evalue, tb, **kwargs):
-    tb_message = format(etype, evalue, tb, **kwargs)
-    print(tb_message, file=sys.stderr)

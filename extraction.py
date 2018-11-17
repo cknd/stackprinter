@@ -28,10 +28,10 @@ def get_source(frame):
         location of lines[0] in the original source file
     """
 
-    # TODO find out what's faster: Allowing 'findsource' to
-    # tokenize the whole file to find the surrounding code block,
-    # or getting the whole file quickly via linecache & feeding
-    # everything to our own instance of tokenize, then clipping to
+    # TODO find out what's faster: Allowing inspect's getsourcelines
+    # to tokenize the whole file to find the surrounding code block,
+    # or getting the whole file quickly via linecache & feeding all
+    # of it to our own instance of tokenize, then clipping to
     # desired context afterwards.
 
     if frame.f_code.co_name in NON_FUNCTION_SCOPES:
@@ -41,7 +41,6 @@ def get_source(frame):
         lines, startline = inspect.getsourcelines(frame)
 
     return lines, startline
-
 
 
 def walk_tb(tb):
@@ -61,6 +60,19 @@ def walk_tb(tb):
     while tb:
         yield inspect_frame(tb)
         tb = tb.tb_next
+
+
+def walk_stack(frame):
+    """
+    TODO
+    """
+    stack = [frame]
+    while frame.f_back:
+        frame = frame.f_back
+        stack.append(frame)
+
+    for fr in reversed(stack):
+        yield inspect_frame(fr)
 
 
 def inspect_frame(tb):

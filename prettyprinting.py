@@ -10,8 +10,8 @@ def format_value(value, indent=0, name='', truncate=500, oneline=False):
 
     # TODO see where pprint can be used instead https://docs.python.org/3/library/pprint.html
 
-    # TODO look at https://docs.python.org/3.6/library/reprlib.html for recursion-safe and size limited reprs
-    # ... otoh, maybe recursion isnt a problem? https://docs.python.org/3/c-api/exceptions.html#c.Py_ReprEnter
+    # TODO consider reprlib https://docs.python.org/3.6/library/reprlib.html
+    # for recursion-safe and size limited reprs
 
     if isinstance(value, UnresolvedAttribute):
         # import pdb; pdb.set_trace()
