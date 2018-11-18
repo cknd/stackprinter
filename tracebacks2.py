@@ -10,23 +10,26 @@ import extraction as ex
 # warrants a full stack inspection
 
 
-def format_tb(frameinfos, formatter=None, reverse_order=False):
-    if formatter is None:
-        formatter = FrameFormatter()
+def failsafe(formatter_func):
+    """
+    Recover the built-in traceback if we fall on our face while formatting
+    """
+    def failsafe_formatter(etype, evalue, tb, *args, **kwargs):
+        try:
+            msg = formatter_func(etype, evalue, tb, **kwargs)
+        except Exception as exc:
+            our_tb = traceback.format_exception(exc.__class__,
+                                                exc,
+                                                exc.__traceback__,
+                                                chain=False)
 
-    if not isinstance(frameinfos, list):
-        frameinfos = [frameinfos]
+            msg = 'Stackprinter failed:\n%s' % ''.join(our_tb[-2:])
+            msg += 'So here is the original traceback at least:\n\n'
+            msg += ''.join(traceback.format_exception(etype, evalue, tb))
 
-    tb_strings = []
-    for fi in frameinfos:
-        if False: #'site-packages' in fi.filename:
-            tb_strings.append(formatter.format_frame(fi, source_context=1, show_vals=False, show_signature=False))
-        else:
-            tb_strings.append(formatter.format_frame(fi, source_context=15))
+        return msg
 
-    if reverse_order:
-        tb_strings = reversed(tb_strings)
-    return "".join(tb_strings)
+    return failsafe_formatter
 
 
 # def format_summary(frameinfos, reverse_order=False):
@@ -37,7 +40,7 @@ def format_tb(frameinfos, formatter=None, reverse_order=False):
 #         msg = reversed(msg)
 #     return "".join(msg)
 
-
+@failsafe
 def format(etype, evalue, tb, show_full=True, show_summary=False,
            reverse_order=False, **formatter_kwargs):
     import time
@@ -83,6 +86,23 @@ def reset_exceptook():
     sys.excepthook = sys.__excepthook__
 
 
+def format_tb(frameinfos, formatter=None, reverse_order=False):
+    if formatter is None:
+        formatter = FrameFormatter()
+
+    if not isinstance(frameinfos, list):
+        frameinfos = [frameinfos]
+
+    tb_strings = []
+    for fi in frameinfos:
+        if False: #'site-packages' in fi.filename:
+            tb_strings.append(formatter.format_frame(fi, source_context=1, show_vals=False, show_signature=False))
+        else:
+            tb_strings.append(formatter.format_frame(fi, source_context=15))
+
+    if reverse_order:
+        tb_strings = reversed(tb_strings)
+    return "".join(tb_strings)
 
 
 if __name__ == '__main__':
@@ -101,7 +121,6 @@ if __name__ == '__main__':
                          'in': np.ones((42,23))}
 
     def deco(f):
-        print('decoratin')
         bla = 1234
         def closure(*args, **kwargs):
             kwargs['things'] = bla
@@ -152,7 +171,8 @@ if __name__ == '__main__':
 
 
     # some_function("hello")
-
+    # wha = whatever()
+    # wha.ahoi()
     try:
         wha = whatever()
         wha.ahoi()
@@ -161,8 +181,8 @@ if __name__ == '__main__':
         scopidoped = 'gotcha'
         tic = time.perf_counter()
 
-        tb_string = format(*stuff)
+        msg = format(*stuff)
 
         took = time.perf_counter() - tic
-        print(tb_string)
+        print(msg)
         print('took', took * 1000)

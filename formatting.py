@@ -128,10 +128,7 @@ class FrameFormatter():
     def format_frame(self, frame, source_context=5, show_signature=True,
                      show_vals='context', truncate_vals=500):
         """
-        Stringify a single stack frame or traceback entry
-
-        TODO mention: Also accepts a FrameInfo tuple
-
+        Render a single stack frame or traceback entry
 
 
         Params
@@ -145,8 +142,8 @@ class FrameFormatter():
             the currently executed line; for a traceback, it's the line where an
             error occured. (technically: `frame.f_lineno` vs. `tb.tb_lineno`)
 
-            The third option is only interesting if you're planning to format
-            one frame multiple different ways: It's a little faster to format a
+            The third option is interesting only if you're planning to format
+            one frame multiple different ways. It is a little faster to format a
             pre-chewed frame than a normal frame object, since the whole process
             contains many non-formatting-specific steps like "finding the source
             code", "finding all the variables" etc. So, this method also accepts
@@ -189,9 +186,9 @@ class FrameFormatter():
                              "%s, was %s" % (str(valid_gv), show_vals))
 
         fi = ex.get_info(frame)
-
         msg = self._format_frame(fi, source_context, show_vals,
-                                  show_signature, truncate_vals)
+                                 show_signature, truncate_vals)
+
         return msg
 
 
