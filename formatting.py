@@ -64,7 +64,7 @@ def select_scope(fi, source_context, show_vals, show_signature, filter=None):
             source_lines = []
         elif source_context == 1:
             source_lines = [lineno]
-        elif source_context == 'frame':
+        elif source_context == 'all':
             source_lines = range(minl, maxl)
         elif source_context > 1:
             start = max(lineno - (source_context - 1), 0)
@@ -81,9 +81,9 @@ def select_scope(fi, source_context, show_vals, show_signature, filter=None):
         trimmed_source_map = {}
 
     if show_vals:
-        if show_vals == 'frame':
+        if show_vals == 'all':
             val_lines = range(minl, maxl)
-        elif show_vals == 'context':
+        elif show_vals == 'like_source':
             val_lines = source_lines
         elif show_vals == 'line':
             val_lines = [lineno]
@@ -125,8 +125,50 @@ class FrameFormatter():
     var_indent = 8 #"        "
     val_tpl = ' ' * var_indent + "%s = %s\n"
 
-    def format_frame(self, frame, source_context=5, show_signature=True,
-                     show_vals='context', truncate_vals=500):
+    def __init__(self, source_context=5, show_signature=True,
+                 show_vals='like_source', truncate_vals=500):
+        """
+        TODO
+
+
+        Params
+        ---
+        source_context: int or 'all'
+            Selects how much source code will be shown.
+            0: Don't include a source listing.
+            n > 0: Show n lines of code.
+            string 'all': Show the whole scope of the frame.
+
+        show_signature: bool
+            Always include the function header in the source code listing.
+
+        show_vals: str or None
+            Selects which variable assignments will be shown.
+            'line': Show only the variables on the highlighted line.
+            'like_source': Show those visible in the source listing (default).
+            'all': Show every variable in the scope of the frame.
+            None: Don't show any variable assignments.
+
+        truncate_vals: int
+            Maximum number of characters to be used for each variable value
+        """
+
+
+        if not (isinstance(source_context, int) or source_context == 'all'):
+            raise ValueError("source_context must be an integer or 'all', "
+                             "was %s" % source_context)
+
+        valid_gv = ['all', 'like_source', 'line', None]
+        if show_vals not in valid_gv:
+            raise ValueError("show_vals must be one of "
+                             "%s, was %s" % (str(valid_gv), show_vals))
+
+        self.source_context = source_context
+        self.show_signature = show_signature
+        self.show_vals = show_vals
+        self.truncate_vals = truncate_vals
+
+    def __call__(self, frame):
         """
         Render a single stack frame or traceback entry
 
@@ -149,48 +191,21 @@ class FrameFormatter():
             code", "finding all the variables" etc. So, this method also accepts
             the raw results from `extraction.get_info()`, of type FrameInfo. In
             that case, it will just assemble some strings, no more chewing.
-
-        source_context: int or 'frame'
-            Selects how much source code will be shown.
-            int 0: Don't include a source listing.
-            int >0: Show this nr of lines of code.
-            string 'frame': Show the whole scope of the frame.
-
-        show_signature: bool
-            Always include the function header in the source listing.
-
-        show_vals: str or None
-            Selects which variable assignments will be shown.
-            'line': Show only the variables on the highlighted line.
-            'context': Show any variable visible in the source listing (default).
-            'frame': Show every variable in the scope of the frame.
-            None: Don't show any variable assignments.
-
-        truncate_vals: int
-            Maximum number of characters to be used for each variable value
-
         """
-
         accepted_types = (types.FrameType, types.TracebackType, ex.FrameInfo)
         if not isinstance(frame, accepted_types):
             raise ValueError("Expected one of these types: "
                              "%s. Got %r" % (accepted_types, frame))
 
-        if not (isinstance(source_context, int) or source_context == 'frame'):
-            raise ValueError("source_context must be an integer or 'frame', "
-                             "was %s" % source_context)
+        if isinstance(frame, ex.FrameInfo):
+            finfo = frame
+        else:
+            finfo = ex.get_info(frame)
 
-        valid_gv = ['frame', 'context', 'line', None]
-        if show_vals not in valid_gv:
-            raise ValueError("show_vals must be one of "
-                             "%s, was %s" % (str(valid_gv), show_vals))
-
-        fi = ex.get_info(frame)
-        msg = self._format_frame(fi, source_context, show_vals,
-                                 show_signature, truncate_vals)
+        msg = self._format_frame(finfo, self.source_context, self.show_vals,
+                                 self.show_signature, self.truncate_vals)
 
         return msg
-
 
     def _format_frame(self, fi, source_context, show_vals,
                       show_signature, truncate_vals):

@@ -6,7 +6,6 @@ from io import BytesIO
 
 # TODO use ints after debugging is finished
 # TODO move to separate module so both here and formatting can import * them
-# or mazbe to _init_? does that work
 VAR = 'VAR'
 KEYWORD = 'KW'
 CALL = 'CALL'
@@ -19,15 +18,16 @@ def _tokenize(source_lines):
     """
     Split a list of source lines into tokens
 
-    This returns a list of
+    TODO
 
 
     """
-    # This is a trick used by the `inspect` standard lib module:
+
     tokenizer = tokenize.generate_tokens(iter(source_lines).__next__)
-    # More details: generate_tokens() is an undocumented method :/. But the
-    # official tokenize.tokenize() insists on getting a `readline` function.
-    # This would require us to pack up our nice list strings again, like this:
+    # Dragons! This is a trick used in the `inspect` standard lib module,
+    # which uses the undocumented generate_tokens() instead of the official
+    # tokenize(), since that doesn't accept strings, only `readline`s.
+    # So the official route would be to repackage our strings like this... :/
     #   source = "".join(source_lines)
     #   source_bytes = BytesIO(source.encode('utf-8')).readline
     #   tokenizer = tokenize.tokenize(source_bytes)
@@ -128,11 +128,8 @@ def join_broken_lines(source_lines):
                 fudge = 3 if white_char == ' ' else 0
                 indent = white_char * max(0, (n_raw - n_stripped - fudge))
 
-            gobbled_lines.append(indent + "#  " + nextline_stripped)
+            gobbled_lines.append(indent + "\n" )
             lineno_corrections[k] = k_continued - k
-        else:
-            if gobbled_lines:
-                line = line[:-1] + "  # '\\' \n"
 
         unbroken_lines.append(line)
         unbroken_lines.extend(gobbled_lines)

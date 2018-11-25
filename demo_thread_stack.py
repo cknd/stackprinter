@@ -42,15 +42,15 @@ def show_stack(thread, suppress=['threading.py']):
         stack.append(fr)
 
     msg = "%r\n\n" % thread
-    formatter = formatting.ColoredVariablesFormatter()
-    # formatter = formatting.FrameFormatter()
+    formatter = formatting.ColoredVariablesFormatter(source_context=7)
+    # formatter = formatting.FrameFormatter(source_context=7)
     for fr in reversed(stack):
         if any(pt in fr.f_code.co_filename for pt in suppress):
             co = fr.f_code
             frame_msg = "File %s, line %s, in %s\n" % (co.co_filename, fr.f_lineno, co.co_name)
         else:
-            finfo = extraction.inspect_frame(fr)
-            frame_msg = formatter.format_frame(finfo, source_context=7)
+            finfo = extraction.get_info(fr)
+            frame_msg = formatter(finfo)
         msg += add_indent(frame_msg) + '\n'
     return msg
 

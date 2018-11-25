@@ -1,108 +1,95 @@
-import sys
-import traceback
-from formatting import FrameFormatter, ColoredVariablesFormatter
-import extraction as ex
+# import sys
+# import traceback
+# from formatting import FrameFormatter, ColoredVariablesFormatter
+# import extraction as ex
 
 
-# TODO:
-# verbosity blacklisting not only by folder but also by
-# exception type -- KeyboardInterrupt probable never
-# warrants a full stack inspection
+# # TODO:
+# # verbosity blacklisting not only by folder but also by
+# # exception type -- KeyboardInterrupt probable never
+# # warrants a full stack inspection
 
 
-def failsafe(formatter_func):
-    """
-    Recover the built-in traceback if we fall on our face while formatting
-    """
-    def failsafe_formatter(etype, evalue, tb, *args, **kwargs):
-        try:
-            msg = formatter_func(etype, evalue, tb, **kwargs)
-        except Exception as exc:
-            our_tb = traceback.format_exception(exc.__class__,
-                                                exc,
-                                                exc.__traceback__,
-                                                chain=False)
+# def failsafe(formatter_func):
+#     """
+#     Recover the built-in traceback if we fall on our face while formatting
+#     """
+#     def failsafe_formatter(etype, evalue, tb, *args, **kwargs):
+#         try:
+#             msg = formatter_func(etype, evalue, tb, **kwargs)
+#         except Exception as exc:
+#             our_tb = traceback.format_exception(exc.__class__,
+#                                                 exc,
+#                                                 exc.__traceback__,
+#                                                 chain=False)
 
-            msg = 'Stackprinter failed:\n%s' % ''.join(our_tb[-2:])
-            msg += 'So here is the original traceback at least:\n\n'
-            msg += ''.join(traceback.format_exception(etype, evalue, tb))
+#             msg = 'Stackprinter failed:\n%s' % ''.join(our_tb[-2:])
+#             msg += 'So here is the original traceback at least:\n\n'
+#             msg += ''.join(traceback.format_exception(etype, evalue, tb))
 
-        return msg
+#         return msg
 
-    return failsafe_formatter
+#     return failsafe_formatter
 
 
-# def format_summary(frameinfos, reverse_order=False):
-#     msg_inner = format_tb(frameinfos[-1], TerseFormatter(), reverse_order)
-#     msg_outer = format_tb(frameinfos[:-1], MinimalFormatter(), reverse_order)
-#     msg = [msg_outer, msg_inner]
+# # def format_summary(frameinfos, reverse_order=False):
+# #     msg_inner = format_tb(frameinfos[-1], TerseFormatter(), reverse_order)
+# #     msg_outer = format_tb(frameinfos[:-1], MinimalFormatter(), reverse_order)
+# #     msg = [msg_outer, msg_inner]
+# #     if reverse_order:
+# #         msg = reversed(msg)
+# #     return "".join(msg)
+
+# @failsafe
+# def format(etype, evalue, tb, show_full=True, show_summary=False,
+#            reverse_order=False, **formatter_kwargs):
+#     import time
+#     tice = time.perf_counter()
+#     frames = list(ex.walk_traceback(tb))
+#     frameinfos = [ex.get_info(fr) for fr in frames]
+#     tooke = time.perf_counter() - tice
+
+
+#     import time; tic = time.perf_counter()
+#     exception_msg = ' '.join(traceback.format_exception_only(etype, evalue))
+
+#     if show_summary:
+#         msg = format_summary(frameinfos, reverse_order)
+#         msg += exception_msg
+
+#     else:
+#         msg = ''
+
+#     if show_full:
+#         if show_summary:
+#             msg += "\n\n========== Full traceback: ==========\n"
+#         # formatter = FrameFormatter(**formatter_kwargs)
+#         formatter = ColoredVariablesFormatter(**formatter_kwargs)
+#         msg += format_tb(frameinfos, formatter, reverse_order)
+#         msg += exception_msg
+
+#     msg += 'extraction took %s\n' % (tooke*1000)
+#     msg += 'formating took %s' % ((time.perf_counter() - tic) * 1000)
+#     return msg
+
+
+
+
+# def format_tb(frameinfos, formatter=None, reverse_order=False):
+#     if formatter is None:
+#         formatter = FrameFormatter()
+
+#     if not isinstance(frameinfos, list):
+#         frameinfos = [frameinfos]
+
+#     tb_strings = []
+#     for fi in frameinfos:
+#         tb_strings.append(formatter(fi))
+
 #     if reverse_order:
-#         msg = reversed(msg)
-#     return "".join(msg)
+#         tb_strings = reversed(tb_strings)
 
-@failsafe
-def format(etype, evalue, tb, show_full=True, show_summary=False,
-           reverse_order=False, **formatter_kwargs):
-    import time
-    tice = time.perf_counter()
-    frames = list(ex.walk_traceback(tb))
-    frameinfos = [ex.get_info(fr) for fr in frames]
-    tooke = time.perf_counter() - tice
-
-
-    import time; tic = time.perf_counter()
-    exception_msg = ' '.join(traceback.format_exception_only(etype, evalue))
-
-    if show_summary:
-        msg = format_summary(frameinfos, reverse_order)
-        msg += exception_msg
-
-    else:
-        msg = ''
-
-    if show_full:
-        if show_summary:
-            msg += "\n\n========== Full traceback: ==========\n"
-        # formatter = FrameFormatter(**formatter_kwargs)
-        formatter = ColoredVariablesFormatter(**formatter_kwargs)
-        msg += format_tb(frameinfos, formatter, reverse_order)
-        msg += exception_msg
-
-    msg += 'extraction took %s\n' % (tooke*1000)
-    msg += 'formating took %s' % ((time.perf_counter() - tic) * 1000)
-    return msg
-
-
-def excepthook(etype, evalue, tb, **kwargs):
-    tb_message = format(etype, evalue, tb, **kwargs)
-    print(tb_message, file=sys.stderr)
-
-
-def set_excepthook():
-    # TODO add options like colors etc
-    sys.excepthook = excepthook
-
-def reset_exceptook():
-    sys.excepthook = sys.__excepthook__
-
-
-def format_tb(frameinfos, formatter=None, reverse_order=False):
-    if formatter is None:
-        formatter = FrameFormatter()
-
-    if not isinstance(frameinfos, list):
-        frameinfos = [frameinfos]
-
-    tb_strings = []
-    for fi in frameinfos:
-        if False: #'site-packages' in fi.filename:
-            tb_strings.append(formatter.format_frame(fi, source_context=1, show_vals=False, show_signature=False))
-        else:
-            tb_strings.append(formatter.format_frame(fi, source_context=15))
-
-    if reverse_order:
-        tb_strings = reversed(tb_strings)
-    return "".join(tb_strings)
+#     return "".join(tb_strings)
 
 
 if __name__ == '__main__':
@@ -157,13 +144,13 @@ if __name__ == '__main__':
             bla = val.T.\
                   T.T.\
                   T
-
-            ahoi = "here is a "\
-                   "multi line "\
-                   "string"
             # here is a comment \
             # that has backslashes \
             # for some reason
+            ahoi = "here is a "\
+                   "multi line "\
+                   "string"
+
             boing = np.\
                     random.rand(*bla.T.\
                             T.T)

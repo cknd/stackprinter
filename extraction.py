@@ -54,8 +54,6 @@ def get_info(tb):
     elif isinstance(tb, types.FrameType):
         frame = tb
         lineno = frame.f_lineno
-    elif isinstance(tb, FrameInfo):
-        return tb
     else:
         raise ValueError('Cant inspect this: ' + repr(tb))
 
