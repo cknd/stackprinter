@@ -1,6 +1,6 @@
 # import sys
 # import traceback
-# from formatting import FrameFormatter, ColoredVariablesFormatter
+# from formatting import FrameFormatter, ColoredFrameFormatter
 # import extraction as ex
 
 
@@ -64,7 +64,7 @@
 #         if show_summary:
 #             msg += "\n\n========== Full traceback: ==========\n"
 #         # formatter = FrameFormatter(**formatter_kwargs)
-#         formatter = ColoredVariablesFormatter(**formatter_kwargs)
+#         formatter = ColoredFrameFormatter(**formatter_kwargs)
 #         msg += format_tb(frameinfos, formatter, reverse_order)
 #         msg += exception_msg
 

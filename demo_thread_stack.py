@@ -42,7 +42,7 @@ def show_stack(thread, suppress=['threading.py']):
         stack.append(fr)
 
     msg = "%r\n\n" % thread
-    formatter = formatting.ColoredVariablesFormatter(source_context=7)
+    formatter = formatting.ColoredFrameFormatter(source_context=7)
     # formatter = formatting.FrameFormatter(source_context=7)
     for fr in reversed(stack):
         if any(pt in fr.f_code.co_filename for pt in suppress):

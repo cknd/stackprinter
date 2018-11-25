@@ -1,8 +1,9 @@
 # TODO / Idea: Support [] lookups just like . lookups
 import types
 import inspect
-from source_inspection import annotate
 from collections import OrderedDict, namedtuple
+
+from stackprinter.source_inspection import annotate
 
 FrameInfo = namedtuple('FrameInfo',
                        ['filename', 'function', 'lineno', 'source_map',
@@ -67,7 +68,7 @@ def get_info(tb):
         # other purpose than updating the linecache. seems like a bad tradeoff
         # for our case, but this is not the time & place to fork `inspect`.
     except:
-        source = ["# no source code found\n"]
+        source = []
         startline = lineno
 
     source_map, line2names, name2lines, head_lns, lineno = annotate(source, startline, lineno)

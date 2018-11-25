@@ -1,5 +1,6 @@
-from extraction import UnresolvedAttribute
-from utils import inspect_callable
+from stackprinter.extraction import UnresolvedAttribute
+from stackprinter.utils import inspect_callable
+
 try:
     import numpy as np
 except ImportError:

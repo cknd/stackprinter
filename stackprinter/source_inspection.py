@@ -163,6 +163,9 @@ def annotate(source_lines, line_offset=0, lineno=0, min_line=0, max_line=1e9):
 
 
     """
+    if not source_lines:
+        return {}, {}, {}, [], lineno
+
     source_lines, lineno_corrections = join_broken_lines(source_lines)
     lineno += lineno_corrections[lineno - line_offset]
 

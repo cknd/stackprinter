@@ -1,5 +1,13 @@
 import inspect
 import os
+import re
+
+def match(string, patterns):
+    if isinstance(patterns, str):
+        patterns = []
+    elif patterns is None:
+        return False
+    return any([bool(re.search(p, string)) for p in patterns])
 
 def inspect_callable(f):
     # print(repr(f))
