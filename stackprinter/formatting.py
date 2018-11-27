@@ -100,7 +100,7 @@ def format_stack(frame_infos, mode='plaintext', source_context=5,
     else:
         raise ValueError("Expected mode 'plaintext' or 'color', got %r" % mode)
 
-    minimal_formatter = Formatter(source_context=min(source_context, 0),
+    minimal_formatter = Formatter(source_context=min(source_context, 1),
                                   show_signature=False,
                                   show_vals=False)
 
@@ -234,15 +234,17 @@ class FrameFormatter():
             finfo = ex.get_info(frame)
 
         msg = self._format_frame(finfo, self.source_context, self.show_vals,
-                                 self.show_signature, self.truncate_vals)
+                                 self.show_signature, self.truncate_vals,
+                                 self.suppressed_paths)
 
         return msg
 
     def _format_frame(self, fi, source_context, show_vals,
-                      show_signature, truncate_vals):
+                      show_signature, truncate_vals, suppressed_paths):
         msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
         source_map, assignments = select_scope(fi, source_context,
-                                               show_vals, show_signature)
+                                               show_vals, show_signature,
+                                               suppressed_paths)
 
         if source_map:
             lines = self._format_source(source_map)
@@ -324,12 +326,13 @@ class ColoredFrameFormatter(FrameFormatter):
         super().__init__(*args, **kwargs)
 
     def _format_frame(self, fi, source_context, show_vals,
-                      show_signature, truncate):
+                      show_signature, truncate, suppressed_paths):
         basepath, filename = os.path.split(fi.filename)
         sep = os.sep if basepath else ''
         msg = self.headline_tpl % (basepath, sep, filename, fi.lineno, fi.function)
         source_map, assignments = select_scope(fi, source_context,
-                                               show_vals, show_signature)
+                                               show_vals, show_signature,
+                                               suppressed_paths)
 
         colormap = self._pick_colors(source_map, assignments, fi.lineno)
 
@@ -508,16 +511,15 @@ def select_scope(fi, source_context, show_vals, show_signature, suppressed_paths
             val_lines = [lineno]
 
         # TODO refactor the whole blacklistling mechanism below,
-        # using the 'suppressed_paths' regex patterns
 
-        def hidden(name):
+        def hide(name):
             value = fi.assignments[name]
-            # TODO allow hiding functions & modules whose code lives
-            # in the verbosity_blacklist (e.g. site-packages)
             if callable(value):
-                qualified_name = inspect_callable(value)[0]
-                is_boring = (qualified_name == name)
-                return is_boring
+                qualified_name, path, *_ = inspect_callable(value)
+                is_builtin = value.__class__.__name__ == 'builtin_function_or_method'
+                is_boring = is_builtin or (qualified_name == name)
+                is_suppressed = match(path, suppressed_paths)
+                return is_boring or is_suppressed
             return False
 
 
@@ -527,7 +529,7 @@ def select_scope(fi, source_context, show_vals, show_signature, suppressed_paths
 
         visible_assignments = OrderedDict([(n, fi.assignments[n])
                                            for n in visible_vars
-                                               if not hidden(n)])
+                                               if not hide(n)])
     else:
         visible_assignments = {}
 

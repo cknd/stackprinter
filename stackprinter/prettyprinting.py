@@ -1,3 +1,4 @@
+import os
 from stackprinter.extraction import UnresolvedAttribute
 from stackprinter.utils import inspect_callable
 
@@ -35,7 +36,8 @@ def format_value(value, indent=0, name='', truncate=500, oneline=False):
         val_str = format_array(value)
 
     elif callable(value):
-        name, filename, ln, method_owner = inspect_callable(value)
+        name, filepath, method_owner, ln = inspect_callable(value)
+        filename = os.path.basename(filepath) if filepath is not None else None
         if filename is None:
             val_str = repr(value)
         elif method_owner is None:

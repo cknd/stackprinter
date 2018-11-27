@@ -57,7 +57,7 @@ if __name__ == '__main__':
                    "multi line "\
                    "string"
 
-            # np.reshape(bla, 9000)
+            np.reshape(bla, 9000)
             boing = np.\
                     random.rand(*bla.T.\
                             T.T)
@@ -75,7 +75,7 @@ if __name__ == '__main__':
         scopidoped = 'gotcha'
         tic = time.perf_counter()
 
-        msg = format(stuff, mode='plaintext', reverse=True, truncate_vals=500, suppressed_paths=["site-packages"])
+        msg = format(stuff, mode='color', reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
 
         # took = time.perf_counter() - tic
         print(msg)
