@@ -3,8 +3,8 @@ import random
 import types
 import traceback
 import os
-from collections import OrderedDict
 
+from collections import OrderedDict
 import stackprinter.extraction as ex
 import stackprinter.source_inspection as sc
 from stackprinter.prettyprinting import format_value
@@ -37,7 +37,7 @@ def failsafe(formatter_func, debug=True):
 
 @failsafe
 def format_exc_info(etype, evalue, tb, mode='plaintext',
-                    add_summary=False, suppress_exception_types=None,
+                    add_summary=True, suppress_exception_types=None,
                     reverse=False, **kwargs):
 
     frameinfos = [ex.get_info(fr) for fr in ex.walk_traceback(tb)]
@@ -144,13 +144,14 @@ def format_stack(frame_infos, mode='plaintext', source_context=5,
 
 class FrameFormatter():
     headline_tpl = "File %s, line %s, in %s\n"
-    sourceline_tpl = "    %-3s %s"
-    single_sourceline_tpl = "    %s"
-    marked_sourceline_tpl = "--> %-3s %s"
+    sourceline_tpl = "    %-3s   %s"
+    single_sourceline_tpl = "   %s"
+    marked_sourceline_tpl = "--> %-3s   %s"
     elipsis_tpl = " (...)\n"
-    sep_vars = "    %s\n" % ('.' * 50)
+    var_indent = 5
+    sep_vars = "%s%s\n" % ((' ') * 4, ('.' * 50))
     sep_source_below = ""
-    var_indent = 8 #"        "
+
     val_tpl = ' ' * var_indent + "%s = %s\n"
 
     def __init__(self, source_context=5, show_signature=True,
@@ -292,11 +293,14 @@ class FrameFormatter():
             return ''
 
 def _get_ansi_tpl(hue, sat, val, bold=False):
-    r, g, b = colorsys.hsv_to_rgb(hue, sat, val)
-    r = int(round(r*5))
-    g = int(round(g*5))
-    b = int(round(b*5))
+    r_, g_, b_ = colorsys.hsv_to_rgb(hue, sat, val)
+    r = int(round(r_*5))
+    g = int(round(g_*5))
+    b = int(round(b_*5))
     point = 16 + 36 * r + 6 * g + b
+    # print(r,g,b,point)
+    # import pdb; pdb.set_trace()
+
     bold_tp = '1;' if bold else ''
     code_tpl = ('\u001b[%s38;5;%dm' % (bold_tp, point)) + '%s\u001b[0m'
     return code_tpl
@@ -308,9 +312,10 @@ class ColoredFrameFormatter(FrameFormatter):
         self.rng = random.Random()
         highlight = _get_ansi_tpl(0., 1., 1., True)
         bright = _get_ansi_tpl(0, 0, 1., True)
-        medium = _get_ansi_tpl(0, 0, 0.7, True)
+        medium = _get_ansi_tpl(0, 0, 0.8, True)
         darker = _get_ansi_tpl(0, 0, 0.4, False)
-        dark = _get_ansi_tpl(0, 0, 0.1, True)
+        dark = _get_ansi_tpl(0, 0, 0.2, True)
+
         self.headline_tpl = bright % "File %s%s" + highlight % "%s" + bright % ", line %s, in %s\n"
         self.sourceline_tpl = dark % super().sourceline_tpl
         self.marked_sourceline_tpl = medium % super().marked_sourceline_tpl
@@ -371,6 +376,8 @@ class ColoredFrameFormatter(FrameFormatter):
                                    truncate=truncate)
             assign_str = self.val_tpl % (name, val_str)
             clr_str = _get_ansi_tpl(*colormap[name]) % assign_str
+
+
             msgs.append(clr_str)
 
         if len(msgs) > 0:
