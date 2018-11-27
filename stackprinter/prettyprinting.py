@@ -56,12 +56,12 @@ def format_value(value, indent=0, name='', truncate=500, oneline=False):
             val_str = "<error calling __str__>"
 
     if truncate and len(val_str) > (truncate+3):
-        val_str = "%s..." % val_str[:truncate]
+        val_str = "%s..." % val_str[:truncate].rstrip()
 
     if oneline:
         val_str = val_str.replace('  ', '').replace('\n', '')
-    else:
-        nl_indented = '\n' + (' ' * (indent))
+    elif indent > 0:
+        nl_indented = '\n' + (' ' * indent)
         val_str = val_str.replace('\n', nl_indented)
     return val_str
 
@@ -83,6 +83,6 @@ def format_array(arr):
 
     suffix = ')'
     msg += np.array2string(arr, max_line_width=9000, threshold=50,
-                           edgeitems=3, prefix=prefix, suffix=suffix)
+                           edgeitems=2, prefix=prefix, suffix=suffix)
     msg += suffix
     return msg

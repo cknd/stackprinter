@@ -2,6 +2,7 @@ import colorsys
 import random
 import types
 import traceback
+import os
 from collections import OrderedDict
 
 import stackprinter.extraction as ex
@@ -10,7 +11,7 @@ from stackprinter.prettyprinting import format_value
 from stackprinter.utils import inspect_callable, match
 
 
-def failsafe(formatter_func):
+def failsafe(formatter_func, debug=True):
     """
     Recover the built-in traceback if we fall on our face while formatting
     """
@@ -18,6 +19,8 @@ def failsafe(formatter_func):
         try:
             msg = formatter_func(etype, evalue, tb, **kwargs)
         except Exception as exc:
+            if debug:
+                raise
             our_tb = traceback.format_exception(exc.__class__,
                                                 exc,
                                                 exc.__traceback__,
@@ -37,17 +40,36 @@ def format_exc_info(etype, evalue, tb, mode='plaintext',
                     add_summary=False, suppress_exception_types=None,
                     reverse=False, **kwargs):
 
-    frameinfos = (ex.get_info(fr) for fr in ex.walk_traceback(tb))
+    frameinfos = [ex.get_info(fr) for fr in ex.walk_traceback(tb)]
 
-    stack_msg = format_stack(frameinfos, mode=mode, reverse=reverse, **kwargs)
+    if mode in ['color', 'html']:
+        fmt_mode = 'color'
+    else:
+        fmt_mode = 'plaintext'
 
-    exc_msg = format_exception_message(etype, evalue, mode=mode)
+    stack_msg = format_stack(frameinfos, mode=fmt_mode, reverse=reverse, **kwargs)
+    exc_msg = format_exception_message(etype, evalue, mode=fmt_mode)
+    if add_summary:
+        minimal_kwargs = kwargs.copy()
+        minimal_kwargs['source_context'] = 1
+        minimal_kwargs['show_vals'] = False
+        minimal_kwargs['show_signature'] = False
+        summary_msg = format_stack(frameinfos, mode=fmt_mode, reverse=reverse, **minimal_kwargs)
+    else:
+        summary_msg = ''
 
     if reverse:
-        return exc_msg + '\n\n' + stack_msg
+        # TODO do join over list instead
+        msg = exc_msg + '\n\n' + summary_msg + '\n\n' + stack_msg
     else:
-        return stack_msg + '\n' + exc_msg
+        msg = stack_msg + '\n' + summary_msg + '\n' + exc_msg
 
+    if mode == 'html':
+        from ansi2html import Ansi2HTMLConverter
+        conv = Ansi2HTMLConverter()
+        msg = conv.convert(msg)
+
+    return msg
 
 
 def format_exception_message(etype, evalue, tb=None, mode='plaintext'):
@@ -62,6 +84,9 @@ def format_exception_message(etype, evalue, tb=None, mode='plaintext'):
         bold = _get_ansi_tpl(0, 1, 1, bold=True)
         normal = _get_ansi_tpl(0, 1, 1, bold=True)
         return bold % type_str + normal % val_str
+    else:
+        raise ValueError("Expected mode 'color' or 'plaintext'")
+
 
 def format_stack(frame_infos, mode='plaintext', source_context=5,
                  show_signature=True, show_vals='like_source',
@@ -70,24 +95,26 @@ def format_stack(frame_infos, mode='plaintext', source_context=5,
 
     if mode == 'plaintext':
         Formatter = FrameFormatter
-    elif mode == 'color':
+    elif mode in ['color', 'html']:
         Formatter = ColoredFrameFormatter
-    # elif mode == 'html':
-    #     Formatter = HtmlFrameFormater
     else:
         raise ValueError("Expected mode 'plaintext' or 'color', got %r" % mode)
 
-    minimal_formatter = Formatter(source_context=1, show_signature=False, show_vals=False)
+    minimal_formatter = Formatter(source_context=min(source_context, 0),
+                                  show_signature=False,
+                                  show_vals=False)
 
-    reduced_formatter = Formatter(source_context=1,
+    reduced_formatter = Formatter(source_context=min(source_context, 1),
                                   show_signature=show_signature,
                                   show_vals=show_vals,
-                                  truncate_vals=truncate_vals)
+                                  truncate_vals=truncate_vals,
+                                  suppressed_paths=suppressed_paths)
 
     verbose_formatter = Formatter(source_context=source_context,
                                   show_signature=show_signature,
                                   show_vals=show_vals,
-                                  truncate_vals=truncate_vals)
+                                  truncate_vals=truncate_vals,
+                                  suppressed_paths=suppressed_paths)
 
 
     frame_msgs = []
@@ -118,6 +145,7 @@ def format_stack(frame_infos, mode='plaintext', source_context=5,
 class FrameFormatter():
     headline_tpl = "File %s, line %s, in %s\n"
     sourceline_tpl = "    %-3s %s"
+    single_sourceline_tpl = "    %s"
     marked_sourceline_tpl = "--> %-3s %s"
     elipsis_tpl = " (...)\n"
     sep_vars = "    %s\n" % ('.' * 50)
@@ -126,7 +154,8 @@ class FrameFormatter():
     val_tpl = ' ' * var_indent + "%s = %s\n"
 
     def __init__(self, source_context=5, show_signature=True,
-                 show_vals='like_source', truncate_vals=500):
+                 show_vals='like_source', truncate_vals=500,
+                 suppressed_paths=None):
         """
         TODO
 
@@ -167,6 +196,7 @@ class FrameFormatter():
         self.show_signature = show_signature
         self.show_vals = show_vals
         self.truncate_vals = truncate_vals
+        self.suppressed_paths = suppressed_paths  # already compile regexes and make a `match` callable?
 
     def __call__(self, frame):
         """
@@ -229,17 +259,21 @@ class FrameFormatter():
     def _format_listing(self, lines, lineno):
         ln_prev = None
         msg = ""
+        n_lines = len(lines)
         for ln in sorted(lines):
             line = lines[ln]
             if ln_prev and ln_prev != ln - 1:
                 msg += self.elipsis_tpl
             ln_prev = ln
 
-            if ln == lineno:
-                tpl = self.marked_sourceline_tpl
+            if n_lines > 1:
+                if ln == lineno:
+                    tpl = self.marked_sourceline_tpl
+                else:
+                    tpl = self.sourceline_tpl
+                msg += tpl % (ln, line)
             else:
-                tpl = self.sourceline_tpl
-            msg += tpl % (ln, line)
+                msg += self.single_sourceline_tpl % line
 
         msg += self.sep_source_below
         return msg
@@ -270,16 +304,14 @@ def _get_ansi_tpl(hue, sat, val, bold=False):
 
 class ColoredFrameFormatter(FrameFormatter):
 
-    highlight_val = 1.
-    default_val = 0.5
-
     def __init__(self, *args, **kwargs):
         self.rng = random.Random()
+        highlight = _get_ansi_tpl(0., 1., 1., True)
         bright = _get_ansi_tpl(0, 0, 1., True)
         medium = _get_ansi_tpl(0, 0, 0.7, True)
         darker = _get_ansi_tpl(0, 0, 0.4, False)
         dark = _get_ansi_tpl(0, 0, 0.1, True)
-        self.headline_tpl = bright % super().headline_tpl
+        self.headline_tpl = bright % "File %s%s" + highlight % "%s" + bright % ", line %s, in %s\n"
         self.sourceline_tpl = dark % super().sourceline_tpl
         self.marked_sourceline_tpl = medium % super().marked_sourceline_tpl
         self.elipsis_tpl = darker % super().elipsis_tpl
@@ -288,7 +320,9 @@ class ColoredFrameFormatter(FrameFormatter):
 
     def _format_frame(self, fi, source_context, show_vals,
                       show_signature, truncate):
-        msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
+        basepath, filename = os.path.split(fi.filename)
+        sep = os.sep if basepath else ''
+        msg = self.headline_tpl % (basepath, sep, filename, fi.lineno, fi.function)
         source_map, assignments = select_scope(fi, source_context,
                                                show_vals, show_signature)
 
@@ -317,7 +351,6 @@ class ColoredFrameFormatter(FrameFormatter):
                         line += default_tpl % snippet
                     else:
                         hue, sat, val, bold = colormap[snippet]
-                        val = self.highlight_val if (ln == lineno) else self.default_val
                         var_tpl = _get_ansi_tpl(hue, sat, val, bold)
                         line += var_tpl % snippet
                 elif ttype == sc.CALL:
@@ -377,12 +410,13 @@ class ColoredFrameFormatter(FrameFormatter):
             raise ValueError('Unkwnown color mode: %s' % mode)
 
         self.rng.seed(seed)
-        hue = self.rng.uniform(-0.05,0.66)
-        if hue < 0:
-            hue = hue + 1
-        sat = 1.
-        val = self.highlight_val if highlight else self.default_val
-        return (hue, sat, val, highlight)
+        hue = self.rng.uniform(0.05,0.7)
+        # if hue < 0:
+        #     hue = hue + 1
+        sat = 1. if highlight else 1.
+        val = 1. if highlight else 0.3
+        bold = False
+        return (hue, sat, val, bold)
 
 
 def trim_source(source_map, context):
@@ -427,7 +461,7 @@ def trim_source(source_map, context):
     return trimmed_source_map
 
 
-def select_scope(fi, source_context, show_vals, show_signature, filter=None):
+def select_scope(fi, source_context, show_vals, show_signature, suppressed_paths=None):
     """
     decide which lines of code and which variables will be visible
     """
@@ -466,7 +500,8 @@ def select_scope(fi, source_context, show_vals, show_signature, filter=None):
         elif show_vals == 'line':
             val_lines = [lineno]
 
-        # TODO refactor the whole blacklistling mechanism below
+        # TODO refactor the whole blacklistling mechanism below,
+        # using the 'suppressed_paths' regex patterns
 
         def hidden(name):
             value = fi.assignments[name]
