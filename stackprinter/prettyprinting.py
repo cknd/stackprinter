@@ -11,6 +11,7 @@ except ImportError:
 
 
 def truncate(string, n):
+    n = max(n, 0)
     if n and len(string) > (n+3):
         string = "%s..." % string[:n].rstrip()
     return string
@@ -52,7 +53,7 @@ def format_value(value, indent=0, truncation=None, max_depth=3, depth=0):
         val_str = '{' + ',\n '.join(vstrs) + '}'
 
     elif np and isinstance(value, np.ndarray):
-        val_str = format_array(value)
+        val_str = format_array(value, minimize=depth > 1)
 
     elif callable(value):
         name, filepath, method_owner, ln = inspect_callable(value)
@@ -76,11 +77,12 @@ def format_value(value, indent=0, truncation=None, max_depth=3, depth=0):
         except:
             val_str = "<error calling __str__>"
 
-    truncate(val_str, truncation)
+    val_str = truncate(val_str, truncation)
 
     if indent > 0:
         nl_indented = '\n' + (' ' * indent)
         val_str = val_str.replace('\n', nl_indented)
+
 
     return val_str
 
@@ -112,7 +114,7 @@ def format_iterable(value, prefix, postfix, truncation, max_depth, depth):
     return val_str
 
 
-def format_array(arr):
+def format_array(arr, minimize=False):
     if arr.ndim >= 1:
         # shape_str = repr(arr.shape)
         shape = list(arr.shape)
@@ -129,7 +131,12 @@ def format_array(arr):
         msg = prefix = "array("
 
     suffix = ')'
-    msg += np.array2string(arr, max_line_width=9000, threshold=50,
+    if minimize:
+        msg += "%s%s,...%s" % ('[' * arr.ndim, arr.flatten()[0], ']' * arr.ndim)
+    else:
+        msg += np.array2string(arr, max_line_width=9000, threshold=50,
                            edgeitems=2, prefix=prefix, suffix=suffix)
+
+
     msg += suffix
     return msg
