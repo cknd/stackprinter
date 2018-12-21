@@ -17,14 +17,12 @@ def truncate(string, n):
     return string
 
 
-def format_value(value, indent=0, truncation=None, max_depth=3, depth=0):
+def format_value(value, indent=0, truncation=None, max_depth=2, depth=0):
 
     # TODO see how pprint could be used instead https://docs.python.org/3/library/pprint.html
     # (how to extend for e.g. custom array printing though?)
 
-    if depth == max_depth:
-        truncation = 16
-    elif depth > max_depth:
+    if depth > max_depth:
         return '...'
 
     if isinstance(value, UnresolvedAttribute):
@@ -44,16 +42,20 @@ def format_value(value, indent=0, truncation=None, max_depth=3, depth=0):
         val_str = format_iterable(value, '{', '}', truncation, max_depth, depth)
 
     elif isinstance(value, dict):
-        vstrs = []
-        length = len(value)
-        for k, v in value.items():
-            kstr = truncate(repr(k), 25)
-            vstr = format_value(v, indent=len(kstr)+3, truncation=truncation, depth=depth+1)
-            vstrs.append("%s: %s" % (kstr, vstr))
-        val_str = '{' + ',\n '.join(vstrs) + '}'
+        # TODO write what type of dict specialization it is via value.__class__.__name__
+        if depth == max_depth:
+            val_str = '{...}'
+        else:
+            vstrs = []
+            length = len(value)
+            for k, v in value.items():
+                kstr = truncate(repr(k), 25)
+                vstr = format_value(v, indent=len(kstr)+3, truncation=truncation, depth=depth+1)
+                vstrs.append("%s: %s" % (kstr, vstr))
+            val_str = '{' + ',\n '.join(vstrs) + '}'
 
     elif np and isinstance(value, np.ndarray):
-        val_str = format_array(value, minimize=depth > 1)
+        val_str = format_array(value, minimize=depth > 0)
 
     elif callable(value):
         name, filepath, method_owner, ln = inspect_callable(value)
@@ -88,6 +90,7 @@ def format_value(value, indent=0, truncation=None, max_depth=3, depth=0):
 
 
 def format_iterable(value, prefix, postfix, truncation, max_depth, depth):
+    # TODO cleanup
     length = len(value)
     val_str = prefix
     if depth == max_depth:
@@ -108,15 +111,15 @@ def format_iterable(value, prefix, postfix, truncation, max_depth, depth):
 
     val_str += postfix
 
-    if len(val_str) > 200:
+    if val_str.count('\n') > 2 or depth == max_depth:
         dtype = value.__class__.__name__
-        val_str = "%s-%s:\n%s" % (length, dtype, val_str)
+        sep = '\n' if depth < max_depth else ' '
+        val_str = "%s-%s:%s%s" % (length, dtype, sep, val_str)
     return val_str
 
 
 def format_array(arr, minimize=False):
     if arr.ndim >= 1:
-        # shape_str = repr(arr.shape)
         shape = list(arr.shape)
         if len(shape) < 2:
             shape.append('')
@@ -131,12 +134,13 @@ def format_array(arr, minimize=False):
         msg = prefix = "array("
 
     suffix = ')'
-    if minimize:
-        msg += "%s%s,...%s" % ('[' * arr.ndim, arr.flatten()[0], ']' * arr.ndim)
-    else:
-        msg += np.array2string(arr, max_line_width=9000, threshold=50,
-                           edgeitems=2, prefix=prefix, suffix=suffix)
+
+    array_rep = np.array2string(arr, max_line_width=9000, threshold=50,
+                        edgeitems=2, prefix=prefix, suffix=suffix)
+
+    if minimize and (len(array_rep) > 50 or arr.ndim > 1):
+        array_rep = "%s%s...%s" % ('[' * arr.ndim, arr.flatten()[0], ']' * arr.ndim)
 
 
-    msg += suffix
+    msg += array_rep + suffix
     return msg

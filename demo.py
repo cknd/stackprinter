@@ -33,7 +33,7 @@ if __name__ == '__main__':
         doc string
         """
         bla = """ another triple quoted string """
-        X = np.zeros((len(thing), len(outer_scope_thing)))
+        X = np.zeros((10,10))
         X[0,0] = 1
         boing = outer_scope_thing['in']
         foo = somelist
@@ -41,6 +41,7 @@ if __name__ == '__main__':
         for k in X:
             if np.sum(k) != 0:
                 # raise Exception()
+                hiho = locals()
                 listcomp = [[do_something(val) for val in row] for row in X]
 
     def some_function(boing, zap='!'):
