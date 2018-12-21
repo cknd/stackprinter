@@ -9,9 +9,11 @@ if __name__ == '__main__':
             # raise Exception()
             return some_function('')
 
+    somelist = [1,2,3,np.zeros((23,42)), np.ones((42,23))]
     outer_scope_thing = {'various': 'excellent',
                          123: 'things',
-                         'in': np.ones((42,23))}
+                         'in': np.ones((42,23)),
+                         'a list': somelist}
 
     def deco(f):
         bla = 1234
@@ -34,6 +36,7 @@ if __name__ == '__main__':
         X = np.zeros((len(thing), len(outer_scope_thing)))
         X[0,0] = 1
         boing = outer_scope_thing['in']
+        foo = somelist
         do_something = lambda val: another_broken_function(val + outer_scope_thing['in'] + boing)
         for k in X:
             if np.sum(k) != 0:
@@ -75,8 +78,8 @@ if __name__ == '__main__':
         scopidoped = 'gotcha'
         tic = time.perf_counter()
 
-        msg = format(stuff, mode='color', reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
+        msg = format(stuff, mode='color', source_lines=5, reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
 
-        # took = time.perf_counter() - tic
+        took = time.perf_counter() - tic
         print(msg)
-        # print('took', took * 1000)
+        print('took', took * 1000)

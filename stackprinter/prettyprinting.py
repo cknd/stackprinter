@@ -1,4 +1,6 @@
 import os
+import pprint
+
 from stackprinter.extraction import UnresolvedAttribute
 from stackprinter.utils import inspect_callable
 
@@ -8,29 +10,46 @@ except ImportError:
     np = False
 
 
-def format_value(value, indent=0, name='', truncate=500, oneline=False):
+def truncate(string, n):
+    if n and len(string) > (n+3):
+        string = "%s..." % string[:n].rstrip()
+    return string
 
-    # TODO see where pprint can be used instead https://docs.python.org/3/library/pprint.html
 
-    # TODO consider reprlib https://docs.python.org/3.6/library/reprlib.html
-    # for recursion-safe and size limited reprs
+def format_value(value, indent=0, truncation=None, max_depth=3, depth=0):
+
+    # TODO see how pprint could be used instead https://docs.python.org/3/library/pprint.html
+    # (how to extend for e.g. custom array printing though?)
+
+    if depth == max_depth:
+        truncation = 16
+    elif depth > max_depth:
+        return '...'
 
     if isinstance(value, UnresolvedAttribute):
-        # import pdb; pdb.set_trace()
         reason = "# %s" % (value.exc_type)
         val_tpl = reason + "\n%s = %s"
-        lastval_str = format_value(value.last_resolvable_value, indent=3)
+        lastval_str = format_value(value.last_resolvable_value, indent=3, depth=depth+1)
         val_str = val_tpl % (value.last_resolvable_name, lastval_str)
         indent = 10
 
+    elif isinstance(value, list):
+        val_str = format_iterable(value, '[', ']', truncation, max_depth, depth)
+
+    elif isinstance(value, tuple):
+        val_str = format_iterable(value, '(', ')', truncation, max_depth, depth)
+
+    elif isinstance(value, set):
+        val_str = format_iterable(value, '{', '}', truncation, max_depth, depth)
+
     elif isinstance(value, dict):
         vstrs = []
+        length = len(value)
         for k, v in value.items():
-            vstr = format_value(v, truncate=min(truncate, 50), oneline=True)
-            vstrs.append("%r: %s" % (k, vstr))
-        dtype = value.__class__.__name__
-        dtype_s = '' if dtype == 'dict' else dtype + '\n'
-        val_str = dtype_s + '{' + ',\n '.join(vstrs) + '}'
+            kstr = truncate(repr(k), 25)
+            vstr = format_value(v, indent=len(kstr)+3, truncation=truncation, depth=depth+1)
+            vstrs.append("%s: %s" % (kstr, vstr))
+        val_str = '{' + ',\n '.join(vstrs) + '}'
 
     elif np and isinstance(value, np.ndarray):
         val_str = format_array(value)
@@ -57,15 +76,41 @@ def format_value(value, indent=0, name='', truncate=500, oneline=False):
         except:
             val_str = "<error calling __str__>"
 
-    if truncate and len(val_str) > (truncate+3):
-        val_str = "%s..." % val_str[:truncate].rstrip()
+    truncate(val_str, truncation)
 
-    if oneline:
-        val_str = val_str.replace('  ', '').replace('\n', '')
-    elif indent > 0:
+    if indent > 0:
         nl_indented = '\n' + (' ' * indent)
         val_str = val_str.replace('\n', nl_indented)
+
     return val_str
+
+
+def format_iterable(value, prefix, postfix, truncation, max_depth, depth):
+    length = len(value)
+    val_str = prefix
+    if depth == max_depth:
+        val_str += '...'
+    else:
+        linebreak = False
+        for i, v in enumerate(value):
+            entry = format_value(v, indent=1, truncation=truncation, depth=depth+1)
+            sep = ', ' if i < length - 1 else ''
+            if '\n' in entry:
+                val_str += "\n %s%s" % (entry, sep)
+                linebreak = True
+            else:
+                if linebreak:
+                    val_str += '\n'
+                    linebreak = False
+                val_str += "%s%s" % (entry, sep)
+
+    val_str += postfix
+
+    if len(val_str) > 200:
+        dtype = value.__class__.__name__
+        val_str = "%s-%s:\n%s" % (length, dtype, val_str)
+    return val_str
+
 
 def format_array(arr):
     if arr.ndim >= 1:

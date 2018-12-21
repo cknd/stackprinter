@@ -45,16 +45,17 @@ def walk_frames(frame):
         yield fr
 
 
-def get_info(tb):
+def get_info(tb, lineno=None):
     """
     # all the line nrs in all returned structures are true (absolute) nrs
     """
+
     if isinstance(tb, types.TracebackType):
-        lineno = tb.tb_lineno
+        lineno = tb.tb_lineno if lineno is None else lineno
         frame = tb.tb_frame
     elif isinstance(tb, types.FrameType):
         frame = tb
-        lineno = frame.f_lineno
+        lineno = frame.f_lineno if lineno is None else lineno
     else:
         raise ValueError('Cant inspect this: ' + repr(tb))
 

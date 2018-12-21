@@ -4,15 +4,13 @@ from collections import defaultdict
 from io import BytesIO
 
 
-# TODO use ints after debugging is finished
 # TODO move to separate module so both here and formatting can import * them
+RAW = 'RAW'
+COMMENT = 'COMMENT'
 VAR = 'VAR'
 KEYWORD = 'KW'
 CALL = 'CALL'
 OP = 'OP'
-RAW = 'RAW'  # TODO rename to 'other' or something
-COMMENT = 'COMMENT'
-
 
 def _tokenize(source_lines):
     """
@@ -22,12 +20,11 @@ def _tokenize(source_lines):
 
 
     """
-
     tokenizer = tokenize.generate_tokens(iter(source_lines).__next__)
-    # Dragons! This is a trick used in the `inspect` standard lib module,
-    # which uses the undocumented generate_tokens() instead of the official
-    # tokenize(), since that doesn't accept strings, only `readline`s.
-    # So the official route would be to repackage our strings like this... :/
+    # Dragons! This is a trick found in the `inspect` standard lib module:
+    # Using the undocumented method generate_tokens() instead of the official
+    # tokenize(), since that doesn't accept strings (only `readline`s).
+    # i.e. the official alternative would be to repackage our strings like this:
     #   source = "".join(source_lines)
     #   source_bytes = BytesIO(source.encode('utf-8')).readline
     #   tokenizer = tokenize.tokenize(source_bytes)
@@ -82,6 +79,7 @@ def _tokenize(source_lines):
                 #     # the function signature in our list of names? but
                 #     # that's not even what this catches. if we found the signature
                 #     # properly, we could filter it explicitely
+                #     # TODO: proper handling of keyword argument assignments: left hand sides should be highlighted _only_ in the signature of the current function... bah.
                 #     tokens[-1][0] = CALL
             elif string == ')':
                 # while we're here, note the end of the call signature.
@@ -191,20 +189,19 @@ def annotate(source_lines, line_offset=0, lineno=0, min_line=0, max_line=1e9):
         ln = ln + line_offset
         regions = []
         col = 0
-        # import pdb; pdb.set_trace()
         for ttype, tok_start, tok_end, string in tokens_by_line[ln]:
             if tok_start > col:
                 snippet = line[col:tok_start]
-                regions.append((snippet, RAW, ''))  ## TODO remove string here, only useful for debugging / asserting
+                regions.append((snippet, RAW))
                 col = tok_start
             snippet = line[tok_start:tok_end]
             assert snippet == string
-            regions.append((snippet, ttype, string))  ## TODO remove string here, only useful for debugging / asserting
+            regions.append((snippet, ttype))
             col = tok_end
 
         if col < len(line):
             snippet = line[col:]
-            regions.append((snippet, RAW, ''))  ## TODO remove string here, only useful for debugging / asserting
+            regions.append((snippet, RAW))
 
         source_map[ln] = regions
 
