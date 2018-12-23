@@ -97,7 +97,7 @@ def format_exception_message(etype, evalue, tb=None, mode='plaintext'):
         raise ValueError("Expected mode 'color' or 'plaintext'")
 
 
-def format_stack(frame_infos, mode='plaintext', source_lines=5,
+def format_stack(frames, mode='plaintext', source_lines=5,
                  show_signature=True, show_vals='like_source',
                  truncate_vals=500, reverse=False, suppressed_paths=None):
 
@@ -127,12 +127,14 @@ def format_stack(frame_infos, mode='plaintext', source_lines=5,
                                   truncate_vals=truncate_vals,
                                   suppressed_paths=suppressed_paths)
 
-
     frame_msgs = []
-    is_boring = parent_is_boring = False
-    for fi in frame_infos:
-        if not isinstance(fi, ex.FrameInfo):
-            raise ValueError("Expected a FrameInfo tuple, got %r" % fi)
+    is_boring = False
+    parent_is_boring = True
+    for fi in frames:
+        if isinstance(fi, types.FrameType):
+            fi = ex.get_info(fi)
+        elif not isinstance(fi, ex.FrameInfo):
+            raise ValueError("Expected a frame or a FrameInfo tuple, got %r" % fi)
 
         is_boring = match(fi.filename, suppressed_paths)
         if is_boring:

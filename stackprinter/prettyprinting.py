@@ -9,6 +9,8 @@ try:
 except ImportError:
     np = False
 
+MAXLEN_DICT_KEY_REPR = 25
+MAX_LIST_ENTRIES = 9000
 
 def truncate(string, n):
     n = max(n, 0)
@@ -20,7 +22,7 @@ def truncate(string, n):
 def format_value(value, indent=0, truncation=None, max_depth=2, depth=0):
 
     # TODO see how pprint could be used instead https://docs.python.org/3/library/pprint.html
-    # (how to extend for e.g. custom array printing though?)
+    # (but how to extend for e.g. custom array printing?)
 
     if depth > max_depth:
         return '...'
@@ -47,9 +49,8 @@ def format_value(value, indent=0, truncation=None, max_depth=2, depth=0):
             val_str = '{...}'
         else:
             vstrs = []
-            length = len(value)
             for k, v in value.items():
-                kstr = truncate(repr(k), 25)
+                kstr = truncate(repr(k), MAXLEN_DICT_KEY_REPR)
                 vstr = format_value(v, indent=len(kstr)+3, truncation=truncation, depth=depth+1)
                 vstrs.append("%s: %s" % (kstr, vstr))
             val_str = '{' + ',\n '.join(vstrs) + '}'
@@ -91,13 +92,15 @@ def format_value(value, indent=0, truncation=None, max_depth=2, depth=0):
 
 def format_iterable(value, prefix, postfix, truncation, max_depth, depth):
     # TODO cleanup
+
+    # TODO always write class name if it isn't base list, base tuple
     length = len(value)
     val_str = prefix
     if depth == max_depth:
         val_str += '...'
     else:
         linebreak = False
-        for i, v in enumerate(value):
+        for i, v in enumerate(value[:MAX_LIST_ENTRIES]):
             entry = format_value(v, indent=1, truncation=truncation, depth=depth+1)
             sep = ', ' if i < length - 1 else ''
             if '\n' in entry:
@@ -111,7 +114,7 @@ def format_iterable(value, prefix, postfix, truncation, max_depth, depth):
 
     val_str += postfix
 
-    if val_str.count('\n') > 2 or depth == max_depth:
+    if len(val_str) > 100 or depth == max_depth:
         dtype = value.__class__.__name__
         sep = '\n' if depth < max_depth else ' '
         val_str = "%s-%s:%s%s" % (length, dtype, sep, val_str)

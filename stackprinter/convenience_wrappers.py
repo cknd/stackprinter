@@ -3,7 +3,7 @@ import types
 from threading import Thread
 
 import stackprinter.formatting as fmt
-
+import stackprinter.extraction as ex
 
 def show(thing, stream=None, **kwargs):
     """
@@ -26,7 +26,7 @@ def format(thing, **kwargs):
         return fmt.format_exc_info(*thing, **kwargs)
     else:
         raise ValueError("Can't format `%r`. "\
-                         "Expected an exception instance, sys.exc_info() tuple"\
+                         "Expected an exception, sys.exc_info() tuple"\
                          " or thread object." % thing)
 
 
@@ -35,16 +35,21 @@ def format_exception(exc, **kwargs):
     tb = exc.__traceback__
     fmt.format_exc_info(etype, exc, tb, **kwargs)
 
+
 def format_thread(thread, **kwargs):
     try:
         fr = sys._current_frames()[thread.ident]
     except KeyError:
         msg = "%r: no active frames found" % thread
 
+    if 'suppressed_paths' not in kwargs:
+        kwargs['suppressed_paths'] = []
+    kwargs['suppressed_paths'] += [r"lib/python.*/threading\.py"]
+
     stack = [fr]
     while fr.f_back is not None:
         fr = fr.f_back
-        stack.append(fr)
+        stack.append(ex.get_info(fr))
 
     stack = reversed(stack)
 
