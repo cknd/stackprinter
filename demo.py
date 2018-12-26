@@ -3,8 +3,11 @@ if __name__ == '__main__':
     import sys
     import numpy as np
     from stackprinter import format
+    import stackprinter
+    from traceprinter import trace
 
     class whatever():
+        @trace(mode='color', blacklist=[r'site-packages/numpy'])
         def ahoi(self):
             # raise Exception()
             return some_function('')
@@ -61,11 +64,14 @@ if __name__ == '__main__':
                    "multi line "\
                    "string"
 
+            # print(stackprinter.format(mode='color'))
+            sys.exit()
             np.reshape(bla, 9000)
             boing = np.\
                     random.rand(*bla.T.\
                             T.T)
             raise Exception('something happened')
+
 
 
     # some_function("hello")
@@ -75,12 +81,13 @@ if __name__ == '__main__':
         wha = whatever()
         wha.ahoi()
     except:
-        stuff = sys.exc_info()
-        scopidoped = 'gotcha'
-        tic = time.perf_counter()
+        pass
+        # stuff = sys.exc_info()
+        # scopidoped = 'gotcha'
+        # tic = time.perf_counter()
 
-        msg = format(stuff, mode='color', source_lines=5, reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
+        # msg = format(stuff, mode='color', source_lines=5, reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
 
-        took = time.perf_counter() - tic
-        print(msg)
-        print('took', took * 1000)
+        # took = time.perf_counter() - tic
+        # print(msg)
+        # print('took', took * 1000)

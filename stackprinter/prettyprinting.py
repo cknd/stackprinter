@@ -13,8 +13,10 @@ MAXLEN_DICT_KEY_REPR = 25
 MAX_LIST_ENTRIES = 9000
 
 def truncate(string, n):
+    if not n:
+        return string
     n = max(n, 0)
-    if n and len(string) > (n+3):
+    if len(string) > (n+3):
         string = "%s..." % string[:n].rstrip()
     return string
 
@@ -30,7 +32,7 @@ def format_value(value, indent=0, truncation=None, max_depth=2, depth=0):
     if isinstance(value, UnresolvedAttribute):
         reason = "# %s" % (value.exc_type)
         val_tpl = reason + "\n%s = %s"
-        lastval_str = format_value(value.last_resolvable_value, indent=3, depth=depth+1)
+        lastval_str = format_value(value.last_resolvable_value, truncation=truncation, indent=3, depth=depth+1)
         val_str = val_tpl % (value.last_resolvable_name, lastval_str)
         indent = 10
 
