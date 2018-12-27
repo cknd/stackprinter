@@ -11,12 +11,12 @@ def trace(*args, blacklist=[], **formatter_kwargs):
                                 **formatter_kwargs)
 
     def deco(f):
-        def wrapped_for_trace_printing(*args, **kwargs):
+        def wrapper(*args, **kwargs):
             traceprinter.enable()
             result = f(*args, **kwargs)
             traceprinter.disable()
             return result
-        return wrapped_for_trace_printing
+        return wrapper
 
     if args:
         return deco(args[0])
@@ -53,30 +53,26 @@ class TracePrinter():
         del self.previous_frame
 
     def trace(self, frame, event, arg):
-        try:
-            depth = _count_stack(frame) - self.starting_depth
-            if depth >= self.depth_limit:
-                return None
+        depth = _count_stack(frame) - self.starting_depth
+        if depth >= self.depth_limit:
+            return None
 
-            if 'call' in event:
-                callsite = frame.f_back
-                self.show(callsite)
-                self.show(frame)
-            elif 'return' in event:
-                val_str = ppr.format_value(arg, indent=11, truncation=1000)
-                ret_str = '    Return %s\n' % val_str
-                self.show(frame, note=ret_str)
-            elif event == 'exception':
-                exc_str = fmt.format_exception_message(*arg, mode=self.fmt_color_mode)
-                self.show(frame, note=exc_str)
-                if self.stop_on_exception:
-                    self.disable()
-                return None
+        if 'call' in event:
+            callsite = frame.f_back
+            self.show(callsite)
+            self.show(frame)
+        elif 'return' in event:
+            val_str = ppr.format_value(arg, indent=11, truncation=1000)
+            ret_str = '    Return %s\n' % val_str
+            self.show(frame, note=ret_str)
+        elif event == 'exception':
+            exc_str = fmt.format_exception_message(*arg, mode=self.fmt_color_mode)
+            self.show(frame, note=exc_str)
+            if self.stop_on_exception:
+                self.disable()
+            return None
 
-            return self.trace
-        except Exception as e:
-            import stackprinter
-            stackprinter.show(e)
+        return self.trace
 
     def show(self, frame, note=''):
         if frame is None:
@@ -104,7 +100,7 @@ class TracePrinter():
 
 
 
-def add_indent(string, depth=1, max_depth=5):
+def add_indent(string, depth=1, max_depth=10):
     depth = max(depth, 0)
 
     if depth > max_depth:
@@ -116,16 +112,6 @@ def add_indent(string, depth=1, max_depth=5):
     indented = ''.join(lines)
     return indented
 
-# def add_indent(string, depth=1, max_depth=10):
-#     depth = max(depth, 0)
-
-#     if depth > max_depth:
-#         indent = 'd %s' % depth + '    ' * (depth % max_depth)
-#     else:
-#         indent = '    ' * depth
-
-#     nl_indented = '\n' + indent
-#     return string.replace('\n', nl_indented)
 
 def _get_formatter(mode='plaintext', **kwargs):
     if mode == 'plaintext':
