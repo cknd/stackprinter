@@ -12,16 +12,9 @@ except ImportError:
 MAXLEN_DICT_KEY_REPR = 25
 MAX_LIST_ENTRIES = 9000
 
-def truncate(string, n):
-    if not n:
-        return string
-    n = max(n, 0)
-    if len(string) > (n+3):
-        string = "%s..." % string[:n].rstrip()
-    return string
 
 
-def format_value(value, indent=0, truncation=None, max_depth=2, depth=0):
+def format_value(value, indent=0, truncation=None, wrap=60, max_depth=2, depth=0):
 
     # TODO see how pprint could be used instead https://docs.python.org/3/library/pprint.html
     # (but how to extend for e.g. custom array printing?)
@@ -64,25 +57,27 @@ def format_value(value, indent=0, truncation=None, max_depth=2, depth=0):
         name, filepath, method_owner, ln = inspect_callable(value)
         filename = os.path.basename(filepath) if filepath is not None else None
         if filename is None:
-            val_str = repr(value)
+            val_str = safe_repr(value)
         elif method_owner is None:
-            val_str = "<function '%s' %s:%s>" % (name, filename, ln)
+            name_s = safe_str(name)
+            filename_s = safe_str(filename)
+            ln_s = safe_str(ln)
+            val_str = "<function '%s' %s:%s>" % (name_s, filename_s, ln_s)
         else:
-            val_str = "<method '%s' of %s %s:%s>" % (name, method_owner, filename, ln)
+            name_s = safe_str(name)
+            filename_s = safe_str(filename)
+            method_owner_s = safe_str(method_owner)
+            ln_s = safe_str(ln)
+            val_str = "<method '%s' of %s %s:%s>" % (name_s, method_owner_s, filename_s, ln_s)
 
     # maybe just try: repr(value), because try: str(value) may already be implied (doublecheck)
-    elif hasattr(value, '__repr__'):
-        try:
-            val_str = repr(value)
-        except:
-            val_str = "<error calling __repr__>"
     else:
-        try:
-            val_str = str(value)
-        except:
-            val_str = "<error calling __str__>"
+        val_str= safe_repr_or_str(value)
 
     val_str = truncate(val_str, truncation)
+
+    if depth == 0:
+        val_str = wrap_lines(val_str, wrap)
 
     if indent > 0:
         nl_indented = '\n' + (' ' * indent)
@@ -91,6 +86,27 @@ def format_value(value, indent=0, truncation=None, max_depth=2, depth=0):
 
     return val_str
 
+
+def safe_repr(value):
+    try:
+        return repr(value)
+    except:
+        return '# error calling repr'
+
+def safe_str(value):
+    try:
+        return str(value)
+    except:
+        return '# error calling str'
+
+def safe_repr_or_str(value):
+    try:
+        return repr(value)
+    except:
+        try:
+            return str(value)
+        except:
+            return '# error calling repr or str'
 
 def format_iterable(value, prefix, postfix, truncation, max_depth, depth):
     # TODO cleanup
@@ -102,9 +118,13 @@ def format_iterable(value, prefix, postfix, truncation, max_depth, depth):
         val_str += '...'
     else:
         linebreak = False
-        for i, v in enumerate(value[:MAX_LIST_ENTRIES]):
+        i = 0
+        for v in value:
+            i += 1
+            if i > MAX_LIST_ENTRIES:
+                break
             entry = format_value(v, indent=1, truncation=truncation, depth=depth+1)
-            sep = ', ' if i < length - 1 else ''
+            sep = ', ' if i < length else ''
             if '\n' in entry:
                 val_str += "\n %s%s" % (entry, sep)
                 linebreak = True
@@ -149,3 +169,33 @@ def format_array(arr, minimize=False):
 
     msg += array_rep + suffix
     return msg
+
+
+def truncate(string, n):
+    if not n:
+        return string
+    n = max(n, 0)
+    if len(string) > (n+3):
+        string = "%s..." % string[:n].rstrip()
+    return string
+
+
+def wrap_lines(string, max_width=80):
+
+    def wrap(lines):
+        for l in lines:
+            length = len(l)
+            if length <= max_width:
+                yield l
+            else:
+                k = 0
+                while k < length:
+                    snippet = l[k:k+max_width]
+                    if k > 0:
+                        snippet = " " + snippet
+
+                    yield snippet
+                    k += max_width
+
+    wrapped_lines = wrap(string.splitlines())
+    return '\n'.join(wrapped_lines)

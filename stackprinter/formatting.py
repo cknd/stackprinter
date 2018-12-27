@@ -310,7 +310,7 @@ class FrameFormatter():
             assign_str = self.val_tpl % (name, val_str)
             msgs.append(assign_str)
         if len(msgs) > 0:
-            return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n'
+            return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n\n'
         else:
             return ''
 
@@ -396,7 +396,7 @@ class ColoredFrameFormatter(FrameFormatter):
 
             msgs.append(clr_str)
         if len(msgs) > 0:
-            return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n'
+            return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n\n'
         else:
             return ''
 

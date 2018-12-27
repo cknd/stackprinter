@@ -5,7 +5,7 @@ from threading import Thread
 import stackprinter.formatting as fmt
 import stackprinter.extraction as ex
 
-def show(thing=None, stream=None, **kwargs):
+def show(thing=None, stream=sys.stderr, **kwargs):
     """
     TODO doctsring with all kwargs
 
