@@ -81,11 +81,14 @@ def format_exc_info(etype, evalue, tb, mode='plaintext',
     return msg
 
 
-def format_exception_message(etype, evalue, tb=None, mode='plaintext'):
+def format_exception_message(etype, evalue, tb=None, mode=None):
     type_str = etype.__name__
     val_str = str(evalue)
     if val_str:
         type_str += ": "
+
+    if mode is None:
+        mode = 'plaintext'
 
     if mode == 'plaintext':
         return type_str + val_str
@@ -162,7 +165,7 @@ class FrameFormatter():
     marked_sourceline_tpl = "--> %-3s   %s"
     elipsis_tpl = " (...)\n"
     var_indent = 5
-    sep_vars = "%s%s\n" % ((' ') * 4, ('.' * 50))
+    sep_vars = "%s%s" % ((' ') * 4, ('.' * 50))
     sep_source_below = ""
 
     val_tpl = ' ' * var_indent + "%s = %s\n"
@@ -307,7 +310,7 @@ class FrameFormatter():
             assign_str = self.val_tpl % (name, val_str)
             msgs.append(assign_str)
         if len(msgs) > 0:
-            return self.sep_vars + ''.join(msgs) + self.sep_vars + '\n'
+            return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n'
         else:
             return ''
 
@@ -345,8 +348,6 @@ class ColoredFrameFormatter(FrameFormatter):
             msg += self._format_listing(lines, fi.lineno)
 
         msg += self._format_assignments(assignments, colormap, truncation)
-
-
         # msg += '\n\ncolormap:\n%s' % '\n'.join(str(kv) for kv in colormap.items())
 
         # msg += 'fi.lineno: %s\n' % fi.lineno
@@ -394,9 +395,8 @@ class ColoredFrameFormatter(FrameFormatter):
             clr_str = get_ansi_tpl(*colormap[name]) % assign_str
 
             msgs.append(clr_str)
-
         if len(msgs) > 0:
-            return self.sep_vars + ''.join(msgs) + self.sep_vars + '\n'
+            return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n'
         else:
             return ''
 
@@ -445,7 +445,6 @@ def get_ansi_tpl(hue, sat, val, bold=False):
     b = int(round(b_*5))
     point = 16 + 36 * r + 6 * g + b
     # print(r,g,b,point)
-    # import pdb; pdb.set_trace()
 
     bold_tp = '1;' if bold else ''
     code_tpl = ('\u001b[%s38;5;%dm' % (bold_tp, point)) + '%s\u001b[0m'
@@ -479,7 +478,6 @@ def trim_source(source_map, context):
 
         n_nonwhite = len(snippet0.lstrip(' \t'))
         indent = len(snippet0) - n_nonwhite
-        # import pdb; pdb.set_trace()
         min_indent = min(indent, min_indent)
 
     trimmed_source_map = OrderedDict()

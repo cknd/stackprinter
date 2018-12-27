@@ -1,16 +1,28 @@
-from traceprinter import trace
-
-@trace(mode='color')
+from traceprinter import trace, TracePrinter
+import numpy as np
+# @trace(mode='plaintext')
 def dosomething(x):
     y = dosomethingelse(x)
     return y
 
 def dosomethingelse(y):
-    return doYetAnotherThing(y)
+    a = 2*y
+    b = doYetAnotherThing(y)
+    return b
 
 def doYetAnotherThing(z):
-    import numpy as np
-    z = np.eye(3)
-    raise Exception('ahoi')
+    a = z
+    b = {'a': np.ones(1)}
+    zup = np.ones(0)
+    return zup
+    # raise Exception('ahoi')
+
+tp = TracePrinter(mode='plaintext')
+tp.enable()
+a = np.ones(111)
+zup = 'blub'
+b = np.ones(222)
+c = {'a': np.ones(333)}
 
 dosomething(5)
+tp.disable()
