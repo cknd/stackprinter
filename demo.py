@@ -1,8 +1,7 @@
 if __name__ == '__main__':
 
     from traceprinter import TracePrinter
-    tp = TracePrinter(mode='plaintext')
-    tp.enable()
+    tp = TracePrinter(style='color'); tp.enable()
     import time
     import sys
     import numpy as np
@@ -11,7 +10,7 @@ if __name__ == '__main__':
     from traceprinter import trace
 
     class whatever():
-        # @trace(mode='color')#, blacklist=[r'site-packages/numpy'])
+        # @trace(style='color')#, blacklist=[r'site-packages/numpy'])
         def ahoi(self):
             # raise Exception()
             return some_function('')
@@ -69,7 +68,7 @@ if __name__ == '__main__':
                    "multi line "\
                    "string"
 
-            # print(stackprinter.format(mode='color'))
+            # print(stackprinter.format(style='color'))
             np.reshape(bla, 9000)
             boing = np.\
                     random.rand(*bla.T.\
@@ -90,7 +89,7 @@ if __name__ == '__main__':
         # scopidoped = 'gotcha'
         # tic = time.perf_counter()
 
-        # msg = format(stuff, mode='color', source_lines=5, reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
+        # msg = format(stuff, style='color', source_lines=5, reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
 
         # took = time.perf_counter() - tic
         # print(msg)

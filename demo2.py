@@ -23,7 +23,7 @@ if __name__ == '__main__':
         scopidoped = 'gotcha'
         tic = time.perf_counter()
 
-        msg = format(stuff, mode='color', source_lines='all', reverse=False, truncate_vals=1000, suppressed_paths=["site-packages"])
+        msg = format(stuff, style='color', source_lines='all', reverse=False, truncate_vals=1000, suppressed_paths=["site-packages"])
 
         took = time.perf_counter() - tic
         print(msg)

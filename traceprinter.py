@@ -7,12 +7,13 @@ from stackprinter.utils import match
 
 
 def trace(*args, blacklist=[], **formatter_kwargs):
+    """ get a decorator """
     traceprinter = TracePrinter(blacklist=blacklist,
                                 **formatter_kwargs)
 
     def deco(f):
         def wrapper(*args, **kwargs):
-            traceprinter.enable()
+            traceprinter.enable(current_depth=count_stack(sys._getframe()) + 1)
             result = f(*args, **kwargs)
             traceprinter.disable()
             return result
@@ -32,28 +33,30 @@ class TracePrinter():
                  stop_on_exception=True,
                  **formatter_kwargs):
 
-        self.fmt = _get_formatter(**formatter_kwargs)
-        self.fmt_color_mode = formatter_kwargs.get('mode', None)
+        self.fmt = get_frame_formatter(**formatter_kwargs)
+        self.fmt_style = formatter_kwargs.get('style', None)
         assert isinstance(blacklist, list)
         self.blacklist = [__file__] + blacklist
         self.emit = print_function
         self.depth_limit = depth_limit
         self.stop_on_exception = stop_on_exception
 
-    def enable(self, force=False):
-        self.starting_depth = _count_stack(sys._getframe()) - 1
+    def enable(self, force=False, current_depth=None):
+        if current_depth is None:
+            current_depth = count_stack(sys._getframe(1))
+        self.starting_depth = current_depth
+        self.previous_frame = None
         self.trace_before = sys.gettrace()
         if (self.trace_before is not None) and not force:
             raise Exception("There is already a trace function registered: %r" % self.trace_before)
         sys.settrace(self.trace)
-        self.previous_frame = None
 
     def disable(self):
         sys.settrace(self.trace_before)
         del self.previous_frame
 
     def trace(self, frame, event, arg):
-        depth = _count_stack(frame) - self.starting_depth
+        depth = count_stack(frame) - self.starting_depth
         if depth >= self.depth_limit:
             return None
 
@@ -66,7 +69,7 @@ class TracePrinter():
             ret_str = '    Return %s\n' % val_str
             self.show(frame, note=ret_str)
         elif event == 'exception':
-            exc_str = fmt.format_exception_message(*arg, mode=self.fmt_color_mode)
+            exc_str = fmt.format_exception_message(*arg, style=self.fmt_style)
             self.show(frame, note=exc_str)
             if self.stop_on_exception:
                 self.disable()
@@ -78,12 +81,11 @@ class TracePrinter():
         if frame is None:
             return
 
-        depth = _count_stack(frame) - self.starting_depth
         filepath = inspect.getsourcefile(frame) or inspect.getfile(frame)
-
         if match(filepath, self.blacklist):
             return
 
+        depth = count_stack(frame) - self.starting_depth
         our_callsite = frame.f_back
         callsite_of_previous_frame = getattr(self.previous_frame, 'f_back', -1)
         if self.previous_frame is our_callsite and our_callsite is not None:
@@ -94,10 +96,9 @@ class TracePrinter():
             self.emit(add_indent('┌──────┘\n', depth))
 
         frame_str = self.fmt(frame)
+        frame_str += note
         self.emit(add_indent(frame_str, depth))
-        self.emit(add_indent(note, depth))
         self.previous_frame = frame
-
 
 
 def add_indent(string, depth=1, max_depth=10):
@@ -113,15 +114,15 @@ def add_indent(string, depth=1, max_depth=10):
     return indented
 
 
-def _get_formatter(mode='plaintext', **kwargs):
-    if mode == 'plaintext':
+def get_frame_formatter(style='plaintext', **kwargs):
+    if style == 'plaintext':
         Formatter = fmt.FrameFormatter
-    elif mode in ['color', 'html']:
-        Formatter = fmt.ColoredFrameFormatter
+    elif style == 'color':
+        Formatter = fmt.ColorfulFrameFormatter
     return Formatter(**kwargs)
 
 
-def _count_stack(frame):
+def count_stack(frame):
     depth = 1
     fr = frame
     while fr.f_back:

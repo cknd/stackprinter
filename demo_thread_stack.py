@@ -24,5 +24,5 @@ thr.start()
 
 while True:
     print(chr(27) + "[2J") # clear screen
-    print(format(thr, mode='color', source_lines='all'))
+    print(format(thr, style='color', source_lines='all'))
     time.sleep(2)

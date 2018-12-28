@@ -1,6 +1,6 @@
 from traceprinter import trace, TracePrinter
 import numpy as np
-# @trace(mode='color')
+# @trace(style='color')
 def dosomething(x):
     y = dosomethingelse(x)
     return y
@@ -17,12 +17,13 @@ def doYetAnotherThing(z):
     return zup
     # raise Exception('ahoi')
 
-tp = TracePrinter(mode='color')
+tp = TracePrinter(style='color')
 tp.enable()
+
 a = np.ones(111)
 zup = 'blub'
 b = np.ones(222)
 c = {'a': np.ones(333)}
 
 dosomething(5)
-# tp.disable()
+tp.disable()

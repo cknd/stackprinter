@@ -8,7 +8,7 @@ from collections import OrderedDict
 import stackprinter.extraction as ex
 import stackprinter.source_inspection as sc
 from stackprinter.prettyprinting import format_value
-from stackprinter.utils import inspect_callable, match
+from stackprinter.utils import inspect_callable, match, trim_source
 
 
 def failsafe(formatter_func, debug=True):
@@ -36,7 +36,7 @@ def failsafe(formatter_func, debug=True):
 
 
 @failsafe
-def format_exc_info(etype, evalue, tb, mode='plaintext',
+def format_exc_info(etype, evalue, tb, style='plaintext',
                     add_summary=True, reverse=False, **kwargs):
 
     frameinfos = [ex.get_info(fr) for fr in ex.walk_traceback(tb)]
@@ -46,24 +46,24 @@ def format_exc_info(etype, evalue, tb, mode='plaintext',
 
 
     # TODO what is this for?
-    if mode in ['color', 'html']:
-        fmt_mode = 'color'
+    if style in ['color', 'html']:
+        fmt_style = 'color'
     else:
-        fmt_mode = 'plaintext'
+        fmt_style = 'plaintext'
 
 
     # TODO move summary generation to format_stack (so threads can also use it, and)
     # so multiple format passes over one set of frameinfos is easier to achieve
 
 
-    stack_msg = format_stack(frameinfos, mode=fmt_mode, reverse=reverse, **kwargs)
-    exc_msg = format_exception_message(etype, evalue, mode=fmt_mode)
+    stack_msg = format_stack(frameinfos, style=fmt_style, reverse=reverse, **kwargs)
+    exc_msg = format_exception_message(etype, evalue, style=fmt_style)
     if add_summary:
         minimal_kwargs = kwargs.copy()
         minimal_kwargs['source_lines'] = 1
         minimal_kwargs['show_vals'] = False
         minimal_kwargs['show_signature'] = False
-        summary_msg = format_stack(frameinfos, mode=fmt_mode, reverse=reverse, **minimal_kwargs)
+        summary_msg = format_stack(frameinfos, style=fmt_style, reverse=reverse, **minimal_kwargs)
     else:
         summary_msg = ''
 
@@ -73,7 +73,7 @@ def format_exc_info(etype, evalue, tb, mode='plaintext',
     else:
         msg = stack_msg + '\n' + summary_msg + '\n' + exc_msg
 
-    if mode == 'html':
+    if style == 'html':
         from ansi2html import Ansi2HTMLConverter
         conv = Ansi2HTMLConverter()
         msg = conv.convert(msg)
@@ -81,36 +81,36 @@ def format_exc_info(etype, evalue, tb, mode='plaintext',
     return msg
 
 
-def format_exception_message(etype, evalue, tb=None, mode=None):
+def format_exception_message(etype, evalue, tb=None, style=None):
     type_str = etype.__name__
     val_str = str(evalue)
     if val_str:
         type_str += ": "
 
-    if mode is None:
-        mode = 'plaintext'
+    if style is None:
+        style = 'plaintext'
 
-    if mode == 'plaintext':
+    if style == 'plaintext':
         return type_str + val_str
-    elif mode == 'color':
+    elif style == 'color':
         bold = get_ansi_tpl(0, 1, 1, bold=True)
         normal = get_ansi_tpl(0, 1, 1, bold=True)
         return bold % type_str + normal % val_str
     else:
-        raise ValueError("Expected mode 'color' or 'plaintext'")
+        raise ValueError("Expected style 'color' or 'plaintext'")
 
 
-def format_stack(frames, mode='plaintext', source_lines=5,
+def format_stack(frames, style='plaintext', source_lines=5,
                  show_signature=True, show_vals='like_source',
                  truncate_vals=500, reverse=False, suppressed_paths=None):
 
 
-    if mode == 'plaintext':
+    if style == 'plaintext':
         Formatter = FrameFormatter
-    elif mode in ['color', 'html']:
-        Formatter = ColoredFrameFormatter
+    elif style in ['color', 'html']:
+        Formatter = ColorfulFrameFormatter
     else:
-        raise ValueError("Expected mode 'plaintext' or 'color', got %r" % mode)
+        raise ValueError("Expected style 'plaintext' or 'color', got %r" % style)
 
     min_src_lines = 0 if source_lines == 0 else 1
 
@@ -315,7 +315,86 @@ class FrameFormatter():
             return ''
 
 
-class ColoredFrameFormatter(FrameFormatter):
+def select_scope(fi, lines, lines_after, show_vals, show_signature, suppressed_paths=None):
+    """
+    decide which lines of code and which variables will be visible
+    """
+    source_lines = []
+    minl, maxl = 0, 0
+    if len(fi.source_map) > 0:
+        minl, maxl = min(fi.source_map), max(fi.source_map)
+        lineno = fi.lineno
+
+        if lines == 0:
+            source_lines = []
+        elif lines == 1:
+            source_lines = [lineno]
+        elif lines == 'all':
+            source_lines = range(minl, maxl+1)
+        elif lines > 1 or lines_after > 0:
+            start = max(lineno - (lines - 1), 0)
+            stop = lineno + lines_after
+            start = max(start, minl)
+            stop = min(stop, maxl)
+            source_lines = list(range(start, stop+1))
+
+        if source_lines and show_signature:
+            source_lines = sorted(set(source_lines) | set(fi.head_lns))
+
+    if source_lines:
+        trimmed_source_map = trim_source(fi.source_map, source_lines)
+    else:
+        trimmed_source_map = {}
+
+    if show_vals:
+        if show_vals == 'all':
+            val_lines = range(minl, maxl)
+        elif show_vals == 'like_source':
+            val_lines = source_lines
+        elif show_vals == 'line':
+            val_lines = [lineno]
+
+        # TODO refactor the whole blacklistling mechanism below:
+
+        def hide(name):
+            value = fi.assignments[name]
+            if callable(value):
+                qualified_name, path, *_ = inspect_callable(value)
+                is_builtin = value.__class__.__name__ == 'builtin_function_or_method'
+                is_boring = is_builtin or (qualified_name == name)
+                is_suppressed = match(path, suppressed_paths)
+                return is_boring or is_suppressed
+            return False
+
+
+        visible_vars = (name for ln in val_lines
+                                for name in fi.line2names[ln]
+                                    if name in fi.assignments)
+
+        visible_assignments = OrderedDict([(n, fi.assignments[n])
+                                           for n in visible_vars
+                                               if not hide(n)])
+    else:
+        visible_assignments = {}
+
+
+    return trimmed_source_map, visible_assignments
+
+
+def get_ansi_tpl(hue, sat, val, bold=False):
+    r_, g_, b_ = colorsys.hsv_to_rgb(hue, sat, val)
+    r = int(round(r_*5))
+    g = int(round(g_*5))
+    b = int(round(b_*5))
+    point = 16 + 36 * r + 6 * g + b
+    # print(r,g,b,point)
+
+    bold_tp = '1;' if bold else ''
+    code_tpl = ('\u001b[%s38;5;%dm' % (bold_tp, point)) + '%s\u001b[0m'
+    return code_tpl
+
+
+class ColorfulFrameFormatter(FrameFormatter):
 
     def __init__(self, *args, **kwargs):
         self.rng = random.Random()
@@ -416,17 +495,17 @@ class ColoredFrameFormatter(FrameFormatter):
                     colormap[name] = self._pick_color(name, value, highlight)
         return colormap
 
-    def _pick_color(self, name, val, highlight=False, mode='id'):
-        if mode == 'formatted':
+    def _pick_color(self, name, val, highlight=False, style='id'):
+        if style == 'formatted':
             seed = format_value(val)
-        elif mode == 'repr':
+        elif style == 'repr':
             seed = repr(val)
-        elif mode == 'id':
+        elif style == 'id':
             seed = id(val)
-        elif mode == 'name':
+        elif style == 'name':
             seed = name
         else:
-            raise ValueError('Unkwnown color mode: %s' % mode)
+            raise ValueError('Unkwnown color style: %s' % style)
 
         self.rng.seed(seed)
         hue = self.rng.uniform(0.05,0.7)
@@ -437,120 +516,3 @@ class ColoredFrameFormatter(FrameFormatter):
         bold = highlight
         return (hue, sat, val, bold)
 
-
-def get_ansi_tpl(hue, sat, val, bold=False):
-    r_, g_, b_ = colorsys.hsv_to_rgb(hue, sat, val)
-    r = int(round(r_*5))
-    g = int(round(g_*5))
-    b = int(round(b_*5))
-    point = 16 + 36 * r + 6 * g + b
-    # print(r,g,b,point)
-
-    bold_tp = '1;' if bold else ''
-    code_tpl = ('\u001b[%s38;5;%dm' % (bold_tp, point)) + '%s\u001b[0m'
-    return code_tpl
-
-
-def trim_source(source_map, context):
-    """
-    get part of a source listing, with extraneous indentation removed
-
-    """
-    indent_type = None
-    min_indent = 9000
-    for ln in context:
-        (snippet0, *meta0), *remaining_line = source_map[ln]
-
-        if snippet0.startswith('\t'):
-            if indent_type == ' ':
-                # Mixed tabs and spaces - not trimming whitespace.
-                return source_map
-            else:
-                indent_type = '\t'
-        elif snippet0.startswith(' '):
-            if indent_type == '\t':
-                # Mixed tabs and spaces - not trimming whitespace.
-                return source_map
-            else:
-                indent_type = ' '
-        elif snippet0.startswith('\n'):
-            continue
-
-        n_nonwhite = len(snippet0.lstrip(' \t'))
-        indent = len(snippet0) - n_nonwhite
-        min_indent = min(indent, min_indent)
-
-    trimmed_source_map = OrderedDict()
-    for ln in context:
-        (snippet0, *meta0), *remaining_line = source_map[ln]
-        if not snippet0.startswith('\n'):
-            snippet0 = snippet0[min_indent:]
-        trimmed_source_map[ln] = [[snippet0] + meta0] + remaining_line
-
-    return trimmed_source_map
-
-
-def select_scope(fi, lines, lines_after, show_vals, show_signature, suppressed_paths=None):
-    """
-    decide which lines of code and which variables will be visible
-    """
-    source_lines = []
-    minl, maxl = 0, 0
-    if len(fi.source_map) > 0:
-        minl, maxl = min(fi.source_map), max(fi.source_map)
-        lineno = fi.lineno
-
-        if lines == 0:
-            source_lines = []
-        elif lines == 1:
-            source_lines = [lineno]
-        elif lines == 'all':
-            source_lines = range(minl, maxl+1)
-        elif lines > 1 or lines_after > 0:
-            start = max(lineno - (lines - 1), 0)
-            stop = lineno + lines_after
-            start = max(start, minl)
-            stop = min(stop, maxl)
-            source_lines = list(range(start, stop+1))
-
-        if source_lines and show_signature:
-            source_lines = sorted(set(source_lines) | set(fi.head_lns))
-
-    if source_lines:
-        trimmed_source_map = trim_source(fi.source_map, source_lines)
-    else:
-        trimmed_source_map = {}
-
-    if show_vals:
-        if show_vals == 'all':
-            val_lines = range(minl, maxl)
-        elif show_vals == 'like_source':
-            val_lines = source_lines
-        elif show_vals == 'line':
-            val_lines = [lineno]
-
-        # TODO refactor the whole blacklistling mechanism below:
-
-        def hide(name):
-            value = fi.assignments[name]
-            if callable(value):
-                qualified_name, path, *_ = inspect_callable(value)
-                is_builtin = value.__class__.__name__ == 'builtin_function_or_method'
-                is_boring = is_builtin or (qualified_name == name)
-                is_suppressed = match(path, suppressed_paths)
-                return is_boring or is_suppressed
-            return False
-
-
-        visible_vars = (name for ln in val_lines
-                                for name in fi.line2names[ln]
-                                    if name in fi.assignments)
-
-        visible_assignments = OrderedDict([(n, fi.assignments[n])
-                                           for n in visible_vars
-                                               if not hide(n)])
-    else:
-        visible_assignments = {}
-
-
-    return trimmed_source_map, visible_assignments
