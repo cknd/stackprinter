@@ -49,9 +49,9 @@ def show_stack(**kwargs):
 
 def set_excepthook(**kwargs):
     if _is_running_in_ipython():
-        warnings.warn("excepthooks have no effect when running in Ipython, "
-                      "since it handles all exceptions internally "
-                      "(and also overrides any hook we'd set by its own). "
+        warnings.warn("Excepthooks have no effect when running under Ipython, "
+                      "since IPython handles exceptions internally "
+                      "(and additionally likes to reset the hook to its own). "
                       "Capture exceptions manually to print tracebacks for them.",
                       stacklevel=2)
         return
