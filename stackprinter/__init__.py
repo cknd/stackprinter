@@ -82,13 +82,9 @@ def _format_thread(thread, **kwargs):
             kwargs['suppressed_paths'] = []
         kwargs['suppressed_paths'] += [r"lib/python.*/threading\.py"]
 
-        msg = "%r\n\n" % thread
-        msg += _add_indent(fmt.format_stack_from_frame(fr, **kwargs))
-        return msg
-
-
-def _add_indent(string):
-    return '    ' + '\n    '.join(string.split('\n')).strip()
+        msg = fmt.format_stack_from_frame(fr, **kwargs)
+        msg_indented = '    ' + '\n    '.join(msg.split('\n')).strip()
+        return "%r\n\n%s" % (thread, msg_indented)
 
 
 def _is_exc_info(thing):

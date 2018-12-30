@@ -10,11 +10,18 @@ def forever():
         y = x % 2
         if y == 0:
             assert y == 0
-            time.sleep(1./x)
+            dosomething(x)
         else:
             assert y != 0
-            time.sleep(1./x)
+            dosomethingelse(x)
 
+
+def dosomething(x):
+    time.sleep(1./x)
+
+
+def dosomethingelse(x):
+    time.sleep(1./x)
 
 
 thr = Thread(name='boing', target=forever, daemon=True)
