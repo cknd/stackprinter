@@ -65,7 +65,7 @@ def format_stack(frames, style='plaintext', source_lines=5,
 
 def format_stack_from_frame(fr, **kwargs):
     stack = []
-    while fr.f_back is not None:
+    while fr is not None:
         stack.append(ex.get_info(fr))
         fr = fr.f_back
 

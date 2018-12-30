@@ -5,7 +5,6 @@ if __name__ == '__main__':
     import time
     import sys
     import numpy as np
-    from stackprinter import format
     import stackprinter
     from traceprinter import trace
 
@@ -68,7 +67,7 @@ if __name__ == '__main__':
                    "multi line "\
                    "string"
 
-            # print(stackprinter.format(style='color'))
+            # stackprinter.show_stack(style='color')
             np.reshape(bla, 9000)
             boing = np.\
                     random.rand(*bla.T.\
@@ -76,23 +75,11 @@ if __name__ == '__main__':
             raise Exception('something happened')
 
 
-    stackprinter.set_excepthook(style='color')
-    some_function("hello")
-    wha = whatever()
-    wha.ahoi()
 
 
-    # try:
-    #     wha = whatever()
-    #     wha.ahoi()
-    # except:
-    #     pass
-    #     stuff = sys.exc_info()
-    #     scopidoped = 'gotcha'
-    #     tic = time.perf_counter()
-
-    #     msg = format(stuff, style='color', source_lines=5, reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
-
-    #     took = time.perf_counter() - tic
-    #     print(msg)
-    #     print('took', took * 1000)
+    try:
+        wha = whatever()
+        wha.ahoi()
+    except:
+        pass
+        stackprinter.show(style='color', source_lines=5, reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])

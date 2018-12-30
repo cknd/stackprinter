@@ -23,8 +23,8 @@ def _tokenize(source_lines):
     tokenizer = tokenize.generate_tokens(iter(source_lines).__next__)
     # Dragons! This is a trick from the `inspect` standard lib module:
     # Use the undocumented generate_tokens() instead of the official
-    # tokenize(), since the latter doesn't accept strings (only `readline`s).
-    # The official way would be to repackage our list of lines like this : (
+    # tokenize(), since the latter doesn't accept strings (only `readline()`s).
+    # The official way would be to repackage our list of lines like this :(
     #   source = "".join(source_lines)
     #   source_bytes = BytesIO(source.encode('utf-8')).readline
     #   tokenizer = tokenize.tokenize(source_bytes)
