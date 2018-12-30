@@ -1,7 +1,8 @@
 import sys
 import inspect
 
-from stackprinter import formatting as fmt
+from stackprinter.frame_formatting import FrameFormatter, ColorfulFrameFormatter
+from stackprinter.formatting import format_exception_message
 from stackprinter import prettyprinting as ppr
 from stackprinter.utils import match
 
@@ -69,7 +70,7 @@ class TracePrinter():
             ret_str = '    Return %s\n' % val_str
             self.show(frame, note=ret_str)
         elif event == 'exception':
-            exc_str = fmt.format_exception_message(*arg, style=self.fmt_style)
+            exc_str = format_exception_message(*arg, style=self.fmt_style)
             self.show(frame, note=exc_str)
             if self.stop_on_exception:
                 self.disable()
@@ -116,9 +117,9 @@ def add_indent(string, depth=1, max_depth=10):
 
 def get_frame_formatter(style='plaintext', **kwargs):
     if style == 'plaintext':
-        Formatter = fmt.FrameFormatter
+        Formatter = FrameFormatter
     elif style == 'color':
-        Formatter = fmt.ColorfulFrameFormatter
+        Formatter = ColorfulFrameFormatter
     return Formatter(**kwargs)
 
 

@@ -1,7 +1,7 @@
 if __name__ == '__main__':
 
     from traceprinter import TracePrinter
-    tp = TracePrinter(style='color'); tp.enable()
+    # tp = TracePrinter(style='color'); tp.enable()
     import time
     import sys
     import numpy as np
@@ -76,21 +76,23 @@ if __name__ == '__main__':
             raise Exception('something happened')
 
 
+    stackprinter.set_excepthook(style='color')
+    some_function("hello")
+    wha = whatever()
+    wha.ahoi()
 
-    # some_function("hello")
-    # wha = whatever()
-    # wha.ahoi()
-    try:
-        wha = whatever()
-        wha.ahoi()
-    except:
-        pass
-        # stuff = sys.exc_info()
-        # scopidoped = 'gotcha'
-        # tic = time.perf_counter()
 
-        # msg = format(stuff, style='color', source_lines=5, reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
+    # try:
+    #     wha = whatever()
+    #     wha.ahoi()
+    # except:
+    #     pass
+    #     stuff = sys.exc_info()
+    #     scopidoped = 'gotcha'
+    #     tic = time.perf_counter()
 
-        # took = time.perf_counter() - tic
-        # print(msg)
-        # print('took', took * 1000)
+    #     msg = format(stuff, style='color', source_lines=5, reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
+
+    #     took = time.perf_counter() - tic
+    #     print(msg)
+    #     print('took', took * 1000)
