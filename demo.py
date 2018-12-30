@@ -71,5 +71,5 @@ if __name__ == '__main__':
 
     try:
         whatever().ahoi()
-    except:
-        stackprinter.show(style='color', source_lines=5, reverse=False, truncate_vals=500, suppressed_paths=["site-packages"])
+    except Exception as e:
+        stackprinter.show(e, style='plaintext', suppressed_paths=[r"lib/python.*/site-packages"])
