@@ -2,6 +2,8 @@ import sys
 import types
 import warnings
 from threading import Thread
+from functools import wraps
+
 import stackprinter.formatting as fmt
 from stackprinter.tracing import TracePrinter, trace
 
@@ -12,6 +14,7 @@ def _guess_thing(f):
     # to be called with a certain depth of the call stack in mind while `format`
     # can be called either on its own (depth 1) or from `show` (depth 2). So the
     # frame-getting best happens outside either of them.
+    @wraps(f)
     def show_or_format(thing=None, *args, **kwargs):
         if thing is None:
             thing = sys.exc_info()
