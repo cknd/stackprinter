@@ -1,6 +1,6 @@
-# Python call stack formatter
+## Python stack formatter
 
-This prints detailed Python stack traces, with more source context and with the current variable contents. When you don't have an IDE or even a debugger for some reason, this is a good way to find out what a piece of code is doing. It's particularly useful when your only debugging tool is a log file.
+This prints more detailed Python stack traces, with some source context and the current variable contents. It's a quick way to see what your code is doing when you don't have an IDE or even a debugger for some reason, say when all you have for debugging is a log file.
 
 #### Before
 <img src="tb_before.png" width="400">
@@ -11,35 +11,46 @@ This prints detailed Python stack traces, with more source context and with the 
 # Usage
 
 ## Log detailed tracebacks for exceptions
+Just call `show` or `format` in an except block.
+
+By default, this produces a plain text string. Pass `style='color'` to get semantic highlighting like above. See the docs for `format` for the full set of configs.
+
 ```python
+import stackprinter
+
 try:
     something()
 except:
-    stackprinter.show()  # grab the current exception and print it to stderr
+    stackprinter.show(style='color')  # grab the current exception and print it to stderr
 
-    ## ...or only return the string, e.g. for logging
-    # logging.log(stackprinter.format())
+    # ...or only return a string, e.g. for logging.
+    # defaults to plain text.
+    message = stackprinter.format()
+    logging.log(message)
 ```
+There's also a `stackprinter.set_excepthook`, which replaces the default python crash message by this one (so it works everywhere without the extra `try/catch`ing... unless you're running in IPython).
 
-There's also a `stackprinter.set_excepthook`, which replaces the default python crash message (so it works everywhere without the extra `try/catch`ing... unless you're running within IPython). You can also pass exception objects explicitely (see docs TODO).
+You can also pass things like exception objects explicitely (see docs).
 
 ## See the call stack of another thread
+Pass the thread object to `show` or `format`
+
 ```python
 thread = threading.Thread(target=something)
 thread.start()
 while True:
-    stackprinter.show(thread)  # ...or `format`
+    stackprinter.show(thread)
     time.sleep(0.1)
 ```
 
 ## See the call stack of the current thread
 ```python
-stackprinter.show()  # ...or `format`
+stackprinter.show()
 ```
 
 ## Trace a piece of code as it is executed
 
-More as a toy than anything else, you can watch your code step-by-step, by printing a trace of each function call & return 'live' as they are happening.
+More as a toy than anything else, you can watch a piece of code step-by-step, by printing a trace of each function call & return 'live' as they are happening.
 ```python
 tp = TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"])
 tp.enable()
@@ -52,10 +63,9 @@ tp.disable()
 
 # How it works
 
-Basically, this is a frame formatter. For each [frame on the call stack](https://en.wikipedia.org/wiki/Call_stack), it grabs the source code to find out which source lines reference which variables. Then it displays code and variables in the neighbourhood of the last executed line.
-This yields a log that covers 90% of what I usually do with a debugger ('what was this function called with?', 'why did that argument have _that_ value?'). Since it knows where in the code each variable occurs, it even does semantic highlighting (with `style='color'`).
+Basically, this is a frame formatter. For each [frame on the call stack](https://en.wikipedia.org/wiki/Call_stack), it grabs the source code to find out which source lines reference which variables. Then it displays code and variables in the neighbourhood of the last executed line. Since it knows where in the code each variable occurs, it's relatively easy to do semantic highlighting.
 
-The frame inspection routines are independent of any actual string formatting, so it should be fairly straightforward to write other formatter types on top. Like, foldable and clickable html pages instead of text logs?
+The frame inspection routines are independent of any actual string formatting, so it should be fairly straightforward to write other formatter types on top. Like, foldable and clickable html pages instead of text logs, with download links for pickled variable contents?
 
 # Caveats
 
@@ -64,3 +74,5 @@ Inspecting and formatting isn't thread safe: Other threads don't stop just becau
 # Docs
 
 \*coughs\*
+
+For now, look at doc strings
