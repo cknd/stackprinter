@@ -7,7 +7,7 @@ def match(string, patterns):
     if not isinstance(string, str):
         return False
     if isinstance(patterns, str):
-        patterns = []
+        patterns = [patterns]
     elif patterns is None:
         return False
     return any([bool(re.search(p, string)) for p in patterns])

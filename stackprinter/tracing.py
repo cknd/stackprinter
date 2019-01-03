@@ -7,9 +7,9 @@ from stackprinter import prettyprinting as ppr
 from stackprinter.utils import match
 
 
-def trace(*args, blacklist=[], **formatter_kwargs):
+def trace(*args, suppressed_paths=[], **formatter_kwargs):
     """ get a decorator """
-    traceprinter = TracePrinter(blacklist=blacklist,
+    traceprinter = TracePrinter(suppressed_paths=suppressed_paths,
                                 **formatter_kwargs)
 
     def deco(f):
@@ -28,7 +28,7 @@ def trace(*args, blacklist=[], **formatter_kwargs):
 
 class TracePrinter():
     def __init__(self,
-                 blacklist=[],
+                 suppressed_paths=[],
                  depth_limit=20,
                  print_function=sys.stderr.write,
                  stop_on_exception=True,
@@ -36,8 +36,8 @@ class TracePrinter():
 
         self.fmt = get_frame_formatter(**formatter_kwargs)
         self.fmt_style = formatter_kwargs.get('style', None)
-        assert isinstance(blacklist, list)
-        self.blacklist = [__file__] + blacklist
+        assert isinstance(suppressed_paths, list)
+        self.suppressed_paths = suppressed_paths
         self.emit = print_function
         self.depth_limit = depth_limit
         self.stop_on_exception = stop_on_exception
@@ -54,7 +54,10 @@ class TracePrinter():
 
     def disable(self):
         sys.settrace(self.trace_before)
-        del self.previous_frame
+        try:
+            del self.previous_frame
+        except AttributeError:
+            pass
 
     def trace(self, frame, event, arg):
         depth = count_stack(frame) - self.starting_depth
@@ -83,8 +86,15 @@ class TracePrinter():
             return
 
         filepath = inspect.getsourcefile(frame) or inspect.getfile(frame)
-        if match(filepath, self.blacklist):
+        if match(filepath, __file__):
             return
+        elif match(filepath, self.suppressed_paths):
+            line_info = (filepath, frame.f_lineno, frame.f_code.co_name)
+            frame_str = 'File %s, line %s, in %s\n' % line_info
+            if len(note) > 123:
+                note == note[:120] + '...'
+        else:
+            frame_str = self.fmt(frame)
 
         depth = count_stack(frame) - self.starting_depth
         our_callsite = frame.f_back
@@ -96,7 +106,7 @@ class TracePrinter():
             # we're a parent frame
             self.emit(add_indent('┌──────┘\n', depth))
 
-        frame_str = self.fmt(frame)
+
         frame_str += note
         self.emit(add_indent(frame_str, depth))
         self.previous_frame = frame

@@ -13,7 +13,7 @@ def format_stack(frames, style='plaintext', source_lines=5,
 
     if style == 'plaintext':
         Formatter = FrameFormatter
-    elif style in ['color', 'html']:
+    elif style ==  'color':
         Formatter = ColorfulFrameFormatter
     else:
         raise ValueError("Expected style 'plaintext' or 'color', got %r" % style)

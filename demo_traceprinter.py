@@ -1,4 +1,4 @@
-from traceprinter import trace, TracePrinter
+from stackprinter import trace, TracePrinter
 import numpy as np
 
 # @trace(style='color')
@@ -20,7 +20,7 @@ def doYetAnotherThing(z):
 
 
 
-tp = TracePrinter(style='color')
+tp = TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"])
 tp.enable()
 
 a = np.ones(111)

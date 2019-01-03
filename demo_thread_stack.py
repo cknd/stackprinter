@@ -32,4 +32,4 @@ thr.start()
 while True:
     print(chr(27) + "[2J") # clear screen
     print(format(thr, style='color', source_lines='all'))
-    time.sleep(2)
+    time.sleep(0.1)

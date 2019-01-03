@@ -3,28 +3,95 @@ import types
 import warnings
 from threading import Thread
 import stackprinter.formatting as fmt
+from stackprinter.tracing import TracePrinter, trace
+
+def _guess_thing(f):
+    """ find the current exception or the current stack frame"""
+
+    # this happens up here in this decorator only because `sys._getframe` needs
+    # to be called with a certain depth of the call stack in mind while `format`
+    # can be called either on its own (depth 1) or from `show` (depth 2). So the
+    # frame-getting best happens outside either of them.
+    def show_or_format(thing=None, *args, **kwargs):
+        if thing is None:
+            thing = sys.exc_info()
+            if thing == (None, None, None):
+                thing = sys._getframe(1)
+        return f(thing, *args, **kwargs)
+    return show_or_format
 
 
-def show(thing=None, file=sys.stderr, **kwargs):
+@_guess_thing
+def format(thing=None, **kwargs):
     """
-    TODO doctsring with all kwargs
+    Render a call stack or the traceback of an exception.
+
+    Call this function without arguments inside an `except` block to get the
+    traceback for the currently handled exception. Call it without arguments
+    anywhere else to see the current thread's call stack.
+
+    Explicitely pass an exception (or a triple as returned by `sys.exc_info()`)
+    to see the traceback message for that particular exception.
+
+    Pass a frame object to see the call stack leading up to that frame.
+
+    Pass a thread object to see that thread's current call stack.
+
+    Note:
+    This displays variable values as they are _at the time of formatting_. In
+    multi-threaded programs, the values might change while we are busy walking
+    the stack & printing them. So, if nothing seems to make sense, consider that
+    your exception and the traceback messages are from slightly different times.
+    Sadly, there is no responsible way to freeze the whole interpreter as soon
+    as an exception occurs in some thread, or to freeze a thread as soon as we
+    are about to inspect its call stack. (...or is there?)
+
+
+    Params
+    ---
+    thing: (optional) exception, sys.exc_info() tuple, frame or thread object
+
+    style: string 'color', 'html' or 'plaintext' (default: 'plaintext')
+        'color': Insert ANSI colored semantic highlights, for use in terminals
+                 that support 256 colors or with something like the `ansi2html`
+                 package to create colorful log files. There is only one color
+                 scheme and it assumes a dark background.
+        'plaintext': Just text.
+
+    source_lines: int or 'all'. (default: 5 lines)
+        Select how much source code context will be shown.
+        int 0: Don't include a source listing.
+        int n > 0: Show n lines of code.
+        string 'all': Show the whole scope of the frame.
+
+    show_signature: bool (default True)
+        Always include the function header in the source code listing.
+
+    show_vals: str or None (default 'like_source')
+        Select which variable values will be shown.
+        'line': Show only the variables on the highlighted line.
+        'like_source': Show those visible in the source listing (default).
+        'all': Show every variable in the scope of the frame.
+        None: Don't show any variable values.
+
+    truncate_vals: int (default 500)
+        Maximum number of characters to be used for each variable value
+
+    suppressed_paths: list of regex patterns
+        Set less verbose formatting for frames whose code lives in certain paths
+        (e.g. library code). Files whose path matches any of the given regex
+        patterns will be considered boring. The first call to boring code is
+        rendered with fewer code lines (but with argument values still visible),
+        while deeper calls within boring code get a single line and no variable
+        values.
+
+        Example: To hide numpy internals from the traceback, set
+        `suppressed_paths=[r"lib/python.*/site-packages/numpy"]`
+
+    reverse: bool (default False)
+        List the innermost frame first
 
     """
-    print(format(thing, stacklevel=1, **kwargs), file=file)
-
-
-def format(thing=None, stacklevel=0, **kwargs):
-    """
-    TODO doctsring with all kwargs
-
-    """
-    if thing is None:
-        thing = sys.exc_info()
-        if thing == (None, None, None):
-            warnings.warn("Tried to show the last exception but didn't find any",
-                          stacklevel=2 + stacklevel)
-            return ''
-
     if isinstance(thing, types.FrameType):
         return fmt.format_stack_from_frame(thing, **kwargs)
     elif isinstance(thing, Thread):
@@ -39,30 +106,67 @@ def format(thing=None, stacklevel=0, **kwargs):
                          "a frame or a thread object." % repr(thing))
 
 
-def format_stack(**kwargs):
+@_guess_thing
+def show(thing=None, file=sys.stderr, **kwargs):
+    """
+    Print a stack trace or the traceback message for an exception.
+
+    See `format` for full docs. This function is identical to `format` except
+    that it directly prints the result to `file`, defaulting to sys.stderr
+    """
+    print(format(thing, **kwargs), file=file)
+
+
+def format_current_stack(**kwargs):
+    """ Render the current thread's call stack. Arguments like format() """
     return format(sys._getframe(1), **kwargs)
 
-
-def show_stack(**kwargs):
+def show_current_stack(**kwargs):
+    """ Print the current thread's call stack. Arguments like show() """
     show(sys._getframe(1), **kwargs)
 
 
+def format_current_exception(**kwargs):
+    """
+    Render a traceback for the currently handled exception.
+
+    kwargs like format()
+    """
+    return format(sys.exc_info(), **kwargs)
+
+def show_current_exception(file=sys.stderr, **kwargs):
+    """
+    Print a traceback for the currently handled exception.
+
+    kwargs like show()
+    """
+    print(format_current_exception(**kwargs), file=file)
+
+
 def set_excepthook(**kwargs):
+    """
+    Set sys.excepthook to print a detailed traceback for any uncaught exception.
+
+    This doesn't work in IPython, since Ipython handles exceptions internally
+    i.e. the interpreter never sees an uncaught exception (and Ipython resets
+    the excepthook for its own purposes, anyway).
+
+    kwargs like show()
+    """
     if _is_running_in_ipython():
-        warnings.warn("Excepthooks have no effect when running under Ipython, "
-                      "since IPython handles exceptions internally "
-                      "(and additionally likes to reset the hook to its own). "
-                      "Capture exceptions manually to print tracebacks for them.",
+        warnings.warn("Excepthooks have no effect when running under Ipython - "
+                      "capture exceptions manually to print tracebacks for them.",
                       stacklevel=2)
         return
+    else:
+        def hook(*args):
+            show(args, **kwargs)
 
-    def hook(*args):
-        show(args, **kwargs)
-
-    sys.excepthook = hook
+        sys.excepthook = hook
 
 
 def remove_exceptook():
+    """ Reinstate the default excepthook """
     sys.excepthook = sys.__excepthook__
 
 # --
