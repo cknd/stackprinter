@@ -24,9 +24,6 @@ tp = TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/
 tp.enable()
 
 a = np.ones(111)
-b = np.ones(222)
-c = {'a': np.ones(333)}
-dosomething(5)
-
+dosomething(a)
 
 tp.disable()

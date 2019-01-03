@@ -37,20 +37,18 @@ while True:
 stackprinter.show()  # ...or `format`
 ```
 
-## Trace a piece of code as it is executed:
+## Trace a piece of code as it is executed
 
-More as a toy than anything else, you can watch your code step by step by printing each function call and return 'live' as they are happening.
+More as a toy than anything else, you can watch your code step-by-step, by printing a trace of each function call & return 'live' as they are happening.
 ```python
-tp = stackprinter.Traceprinter(style='color', print_function=sys.stdout.write)
+tp = TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"])
 tp.enable()
-dosomething()
+a = np.ones(111)
+dosomething(a)
 tp.disable()
-
-# equivalent decorator:
-@stackprinter.trace(style='color')
-def dosomething():
-    ...
 ```
+
+<img src="trace.png" width="400">
 
 # How it works
 
@@ -61,7 +59,7 @@ The frame inspection routines are independent of any actual string formatting, s
 
 # Caveats
 
-Inspecting and formatting isn't thread safe: Other threads don't stop just because we're looking at their call stacks. So, in multi-threaded programs, variables may change _while we're busy walking through the stack and printing it_. This can create confusing logs in some rare cases. If in doubt, and you still don't have a debugger, maybe play with the `Traceprinter` (see below): It hooks into the interpreter's `trace` function to print frames immediately as they are executed. This is basically an automated version of putting lots of print statements in your code. Slows everything down though, of course.
+Inspecting and formatting isn't thread safe: Other threads don't stop just because we're looking at their call stacks. So, in multi-threaded programs, variables may change _while we're busy walking through the stack and printing it_. This can create confusing logs in some rare cases. If in doubt, and you still don't have a debugger, maybe play with the `Traceprinter` (see above). It hooks into the interpreter's `trace` function to print frames immediately as they are executed. This is basically an automated version of putting lots of print statements in your code. Slows everything down though, of course.
 
 # Docs
 
