@@ -1,6 +1,7 @@
 ## Python stack formatter
 
-This prints more detailed Python stack traces, with some source context and the current variable contents. It's a quick way to see what your code is doing when you don't have an IDE or even a debugger for some reason, say when all you have for debugging is a log file.
+When your only debugger is a log file, better add some extra-verbose traceback formatting (a bit more source context & current variable values).
+
 
 #### Before
 <img src="tb_before.png" width="400">
@@ -13,7 +14,7 @@ This prints more detailed Python stack traces, with some source context and the 
 ## Log detailed tracebacks for exceptions
 Just call `show` or `format` in an except block.
 
-By default, this produces a plain text string. Pass `style='color'` to get semantic highlighting like above. See the docs for `format` for the full set of configs.
+By default, this produces a plain text string. Pass `style='color'` to get semantic highlighting, see the docs of `format` for the full set of configs.
 
 ```python
 import stackprinter
@@ -28,29 +29,29 @@ except:
     message = stackprinter.format()
     logging.log(message)
 ```
-There's also a `stackprinter.set_excepthook`, which replaces the default python crash message by this one (so it works everywhere without the extra `try/catch`ing... unless you're running in IPython).
+There's also a `stackprinter.set_excepthook`, which replaces the default python crash message (so it works everywhere without the extra `try/catch`ing).
 
 You can also pass things like exception objects explicitely (see docs).
 
-## See the call stack of another thread
+## See the curremt call stack of another thread
 Pass the thread object to `show` or `format`
 
 ```python
 thread = threading.Thread(target=something)
 thread.start()
 while True:
-    stackprinter.show(thread)
+    stackprinter.show(thread) # or format()
     time.sleep(0.1)
 ```
 
 ## See the call stack of the current thread
 ```python
-stackprinter.show()
+stackprinter.show() # or format()
 ```
 
 ## Trace a piece of code as it is executed
 
-More as a toy than anything else, you can watch a piece of code step-by-step, by printing a trace of each function call & return 'live' as they are happening.
+More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all function calls & returns 'live' as they are happening. Slows everything down though, of course.
 ```python
 tp = TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"])
 tp.enable()
@@ -69,10 +70,15 @@ The frame inspection routines are independent of any actual string formatting, s
 
 # Caveats
 
-Inspecting and formatting isn't thread safe: Other threads don't stop just because we're looking at their call stacks. So, in multi-threaded programs, variables may change _while we're busy walking through the stack and printing it_. This can create confusing logs in some rare cases. If in doubt, and you still don't have a debugger, maybe play with the `Traceprinter` (see above). It hooks into the interpreter's `trace` function to print frames immediately as they are executed. This is basically an automated version of putting lots of print statements in your code. Slows everything down though, of course.
+This displays variable values as they are _at the time of formatting_. In
+multi-threaded programs, variables can change while we are busy walking
+the stack & printing them. So, if nothing seems to make sense, consider that
+your exception and the traceback messages are from slightly different times.
+Sadly, there is no responsible way to freeze all other threads as soon
+as we want to inspect some thread's call stack (...or is there?)
 
 # Docs
 
 \*coughs\*
 
-For now, look at doc strings
+For now, look at the doc strings
