@@ -17,9 +17,8 @@ try:
 except:
     stackprinter.show()  # grab the current exception and print it to stderr
 
-    ## ...or only return the string, for logging:
-    # message = stackprinter.format(style='plaintext')
-    # logging.log(ERROR, message)
+    ## ...or only return the string, e.g. for logging
+    # logging.log(stackprinter.format())
 ```
 
 There's also a `stackprinter.set_excepthook`, which replaces the default python crash message (so it works everywhere without the extra `try/catch`ing... unless you're running within IPython). You can also pass exception objects explicitely (see docs TODO).
