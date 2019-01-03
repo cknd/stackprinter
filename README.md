@@ -2,11 +2,9 @@
 
 This prints detailed Python stack traces, with more source context and with the current variable contents. When you don't have an IDE or even a debugger for some reason, this is a good way to find out what a piece of code is doing. It's particularly useful when your only debugging tool is a log file.
 
-## Before
-![normal traceback example](tb_before.png)
+Before & After:
 
-## After
-![verbose colorful traceback example](tb_after.png)
+<img src="tb_before.png" width="300"> <img src="tb_after.png" width="300">
 
 # Usage
 
