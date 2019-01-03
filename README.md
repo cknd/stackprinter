@@ -11,10 +11,10 @@ When your only debugger is a log file, better add some extra-verbose traceback f
 
 # Usage
 
-## Log detailed tracebacks for exceptions
-Just call `show` or `format` in an except block.
+## Log exceptions
+Call `show` or `format` in an except block to generate a detailed traceback.
 
-By default, this produces a plain text string. Pass `style='color'` to get semantic highlighting, see the docs of `format` for the full set of configs.
+By default, this produces a plain text string. Pass `style='color'` to get colorful semantic highlighting. For the full set of configs see the docs of `format`.
 
 ```python
 import stackprinter
@@ -29,7 +29,7 @@ except:
     message = stackprinter.format()
     logging.log(message)
 ```
-There's also a `stackprinter.set_excepthook`, which replaces the default python crash message (so it works everywhere without the extra `try/catch`ing).
+There's also a `stackprinter.set_excepthook`, which replaces the default python crash message (so it works automatically without additional `try/catch`ing).
 
 You can also pass things like exception objects explicitely (see docs).
 
@@ -45,9 +45,13 @@ while True:
 ```
 
 ## See the call stack of the current thread
+Call `show` or `format` outside any exception handling blocks.
+
 ```python
 stackprinter.show() # or format()
 ```
+
+Or call `show_current_stack` or `format_current_stack` anywhere.
 
 ## Trace a piece of code as it is executed
 
@@ -64,14 +68,14 @@ tp.disable()
 
 # How it works
 
-Basically, this is a frame formatter. For each [frame on the call stack](https://en.wikipedia.org/wiki/Call_stack), it grabs the source code to find out which source lines reference which variables. Then it displays code and variables in the neighbourhood of the last executed line. Since it knows where in the code each variable occurs, it's relatively easy to do semantic highlighting.
+Basically, this is a frame formatter. For each [frame on the call stack](https://en.wikipedia.org/wiki/Call_stack), it grabs the source code to find out which source lines reference which variables. Then it displays code and variables in the neighbourhood of the last executed line. Since it knows where in the code each variable occurs, it's relatively easy to add semantic highlighting.
 
 The frame inspection routines are independent of any actual string formatting, so it should be fairly straightforward to write other formatter types on top. Like, foldable and clickable html pages instead of text logs, with download links for pickled variable contents?
 
 # Caveats
 
 This displays variable values as they are _at the time of formatting_. In
-multi-threaded programs, variables can change while we are busy walking
+multi-threaded programs, variables can change while we're busy walking
 the stack & printing them. So, if nothing seems to make sense, consider that
 your exception and the traceback messages are from slightly different times.
 Sadly, there is no responsible way to freeze all other threads as soon

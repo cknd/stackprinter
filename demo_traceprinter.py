@@ -22,8 +22,6 @@ def doYetAnotherThing(z):
 
 tp = TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"])
 tp.enable()
-
-a = np.ones(111)
+a = np.ones(123)
 dosomething(a)
-
 tp.disable()
