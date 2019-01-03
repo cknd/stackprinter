@@ -10,18 +10,16 @@ This prints detailed Python stack traces, with more source context and with the 
 
 # Usage
 
-## Log detailed tracebacks after exceptions
+## Log detailed tracebacks for exceptions
 ```python
 try:
     something()
 except:
-    # grab the latest exception and
-    # print a traceback to stderr:
-    stackprinter.show()
+    stackprinter.show()  # grab the current exception and print it to stderr
 
-    # ...or only return the string, for logging
-    message = stackprinter.format(style='plaintext')
-    logging.log(ERROR, message)
+    ## ...or only return the string, for logging:
+    # message = stackprinter.format(style='plaintext')
+    # logging.log(ERROR, message)
 ```
 
 There's also a `stackprinter.set_excepthook`, which replaces the default python crash message (so it works everywhere without the extra `try/catch`ing... unless you're running within IPython). You can also pass exception objects explicitely (see docs TODO).
@@ -31,16 +29,18 @@ There's also a `stackprinter.set_excepthook`, which replaces the default python 
 thread = threading.Thread(target=something)
 thread.start()
 while True:
-    stackprinter.show(thread)  # or format
+    stackprinter.show(thread)  # ...or `format`
     time.sleep(0.1)
 ```
 
 ## See the call stack of the current thread
 ```python
-stackprinter.show()  # or format
+stackprinter.show()  # ...or `format`
 ```
 
 ## Trace a piece of code as it is executed:
+
+More as a toy than anything else, you can watch your code step by step by printing each function call and return 'live' as they are happening.
 ```python
 tp = stackprinter.Traceprinter(style='color', print_function=sys.stdout.write)
 tp.enable()
@@ -66,3 +66,4 @@ Inspecting and formatting isn't thread safe: Other threads don't stop just becau
 
 # Docs
 
+\*coughs\*
