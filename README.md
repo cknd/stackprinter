@@ -1,6 +1,6 @@
 ## Python stack formatter
 
-When your only debugger is a log file, better add some extra-verbose traceback formatting (a bit more source context & current variable values).
+When your only debugger is a log file, better add some extra-verbose traceback logging (some more source context & current variable values).
 
 
 #### Before
@@ -14,7 +14,7 @@ When your only debugger is a log file, better add some extra-verbose traceback f
 ## Log exceptions
 Call `show` or `format` in an except block to generate a detailed traceback.
 
-By default, this produces a plain text string. Pass `style='color'` to get colorful semantic highlighting. For the full set of configs see the docs of `format`.
+By default, this generates plain text. Pass `style='color'` to get semantic highlighting. For the full set of configs see the docs of `format`.
 
 ```python
 import stackprinter
@@ -33,8 +33,8 @@ There's also a `stackprinter.set_excepthook`, which replaces the default python 
 
 You can also pass things like exception objects explicitely (see docs).
 
-## See the curremt call stack of another thread
-Pass the thread object to `show` or `format`
+## See the current call stack of another thread
+Pass a thread object to `show` or `format`.
 
 ```python
 thread = threading.Thread(target=something)
@@ -45,13 +45,11 @@ while True:
 ```
 
 ## See the call stack of the current thread
-Call `show` or `format` outside any exception handling blocks.
+Call `show` or `format` outside of exception handling.
 
 ```python
 stackprinter.show() # or format()
 ```
-
-Or call `show_current_stack` or `format_current_stack` anywhere.
 
 ## Trace a piece of code as it is executed
 
@@ -70,7 +68,7 @@ tp.disable()
 
 Basically, this is a frame formatter. For each [frame on the call stack](https://en.wikipedia.org/wiki/Call_stack), it grabs the source code to find out which source lines reference which variables. Then it displays code and variables in the neighbourhood of the last executed line. Since it knows where in the code each variable occurs, it's relatively easy to add semantic highlighting.
 
-The frame inspection routines are independent of any actual string formatting, so it should be fairly straightforward to write other formatter types on top. Like, foldable and clickable html pages instead of text logs, with download links for pickled variable contents?
+The frame inspection routines are independent of any actual string formatting, so it should be fairly straightforward to write other formatter types on top. Like, foldable and clickable html pages, with download links for pickled variable contents?
 
 # Caveats
 

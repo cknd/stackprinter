@@ -8,12 +8,11 @@ import stackprinter.formatting as fmt
 from stackprinter.tracing import TracePrinter, trace
 
 def _guess_thing(f):
-    """ find the current exception or the current stack frame"""
+    """ default to the current exception or current stack frame"""
 
-    # this happens up here in this decorator only because `sys._getframe` needs
-    # to be called with a certain depth of the call stack in mind while `format`
-    # can be called either on its own (depth 1) or from `show` (depth 2). So the
-    # frame-getting best happens outside either of them.
+    # the only reason this happens up here is to keep sys._getframe at the same
+    # call depth relative to an invocation of `show` or `format`, even when
+    # `format` is called _by_ `show`.
     @wraps(f)
     def show_or_format(thing=None, *args, **kwargs):
         if thing is None:
@@ -29,9 +28,9 @@ def format(thing=None, **kwargs):
     """
     Render a call stack or the traceback of an exception.
 
-    Call this function without arguments inside an `except` block to get the
-    traceback for the currently handled exception. Call it without arguments
-    anywhere else to see the current thread's call stack.
+    Call this with no argument inside an `except` block to get the traceback
+    for the currently handled exception. Call it with no argument anywhere
+    else to see the current thread's call stack.
 
     Explicitely pass an exception (or a triple as returned by `sys.exc_info()`)
     to see the traceback message for that particular exception.
@@ -42,12 +41,11 @@ def format(thing=None, **kwargs):
 
     Note:
     This displays variable values as they are _at the time of formatting_. In
-    multi-threaded programs, the values might change while we are busy walking
+    multi-threaded programs, variables can change while we're busy walking
     the stack & printing them. So, if nothing seems to make sense, consider that
     your exception and the traceback messages are from slightly different times.
-    Sadly, there is no responsible way to freeze the whole interpreter as soon
-    as an exception occurs in some thread, or to freeze a thread as soon as we
-    are about to inspect its call stack. (...or is there?)
+    Sadly, there is no responsible way to freeze all other threads as soon
+    as we want to inspect some thread's call stack (...or is there?)
 
 
     Params
