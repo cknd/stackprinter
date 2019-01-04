@@ -1,6 +1,6 @@
 ## Python stack formatter
 
-This prints detailed Python stack traces, with some more source context and with current variable contents. It's a quick way to see what your code is doing when you don't have an IDE or even a debugger for some reason, e.g. when your only debugging tool is a log file 😱
+This prints detailed Python stack traces, with some more source context and with current variable contents. It's a quick way to see what your code is doing when you don't have an IDE or even a debugger for some reason, like when your only debugging tool is a log file 😱
 
 #### Before
 <img src="tb_before.png" width="400">
@@ -10,10 +10,10 @@ This prints detailed Python stack traces, with some more source context and with
 
 # Usage
 
-## Log exceptions
-Call `show` or `format` in an except block to generate a traceback. `show` prints to stderr, `format` returns a string.
+## Logging exception tracebacks
+Call `show` or `format` inside an except block for a traceback of the currently handled exception. `show` prints to stderr, `format` returns a string.
 
-By default, both will generate plain text. Pass `style='color'` to get some semantic highlighting. See the docs of `format` to configure exactly _how_ verbose things should be.
+By default, either will generate plain text. Pass `style='color'` to get some semantic highlighting. See the docs of `format` for all the config options.
 
 ```python
 import stackprinter
@@ -27,11 +27,11 @@ except:
     message = stackprinter.format()
     logging.log(message)
 ```
-Alternatively, there's `stackprinter.set_excepthook` which replaces the default python crash message (so it works automatically without manual try/except... unless you're in IPython).
+There's also `stackprinter.set_excepthook` which replaces the default python crash message (so it works automatically without manual try/except... unless you're in IPython).
 
-You can also pass things like exception objects explicitely (see docs).
+You can also pass exception objects explicitly.
 
-## See the current call stack of another thread
+## Printing the call stack of another thread
 Pass a thread object to `show` or `format`.
 
 ```python
@@ -42,16 +42,16 @@ while True:
     time.sleep(0.1)
 ```
 
-## See the call stack of the current thread
+## Printing the call stack of the current thread
 Call `show` or `format` outside of exception handling.
 
 ```python
 stackprinter.show() # or format()
 ```
 
-## Trace a piece of code as it is executed
+## Tracing a piece of code as it is executed
 
-More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all function calls & returns 'live' as they are happening. Slows everything down though, of course.
+More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all calls & returns 'live' as they are happening. Slows everything down though, of course.
 ```python
 tp = stackprinter.TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"])
 tp.enable()
@@ -66,7 +66,7 @@ tp.disable()
 
 Basically, this is a frame formatter. For each [frame on the call stack](https://en.wikipedia.org/wiki/Call_stack), it grabs the source code to find out which source lines reference which variables. Then it displays code and variables in the neighbourhood of the last executed line.
 
-Since it needs to know where in the code each variable occurs, it was hard to resist adding the whole semantic highlighting thing. This isn't intrinsically tied to 1980ies terminal technology. It should be fairly straightforward™ to format the same frame representation as, say, a foldable and clickable HTML page with downloadable pickled variables.
+Since this already requires it to know where each variable occurs in the code, there was really no way around also adding the colorful semantic highlighting thing seen in the screenshots. These colors are ANSI escape codes now, but it should be fairly straightforward™ to render the same frame representation without any 1980ies terminal technology. Say, a foldable and clickable HTML page with downloadable, pickled variables. But for now you'll have to pipe the ANSI strings through [ansi2html](https://github.com/ralphbean/ansi2html/) or something.
 
 # Caveats
 
