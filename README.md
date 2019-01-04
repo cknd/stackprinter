@@ -1,7 +1,6 @@
 ## Python stack formatter
 
-When your only debugger is a log file, better add some extra-verbose traceback logging (some more source context & current variable values).
-
+This prints detailed Python stack traces, with some more source context and with current variable contents. It's a quick way to see what your code is doing when you don't have an IDE or even a debugger for some reason, like when all you have is a log file.
 
 #### Before
 <img src="tb_before.png" width="400">
@@ -12,9 +11,9 @@ When your only debugger is a log file, better add some extra-verbose traceback l
 # Usage
 
 ## Log exceptions
-Call `show` or `format` in an except block to generate a detailed traceback.
+Call `show` or `format` in an except block to generate a traceback.
 
-By default, this generates plain text. Pass `style='color'` to get semantic highlighting. For the full set of configs see the docs of `format`.
+By default, this generates plain text. Pass `style='color'` for semantic highlighting. For the full set of configs see the docs of `format`.
 
 ```python
 import stackprinter
@@ -29,7 +28,7 @@ except:
     message = stackprinter.format()
     logging.log(message)
 ```
-There's also a `stackprinter.set_excepthook`, which replaces the default python crash message (so it works automatically without additional `try/catch`ing).
+There's also a `stackprinter.set_excepthook`, which replaces the default python crash message (so it works automatically without extra `try/catch`ing).
 
 You can also pass things like exception objects explicitely (see docs).
 
@@ -83,4 +82,4 @@ as we want to inspect some thread's call stack (...or is there?)
 
 \*coughs\*
 
-For now, look at the doc strings, e.g. https://github.com/cknd/stackprinter/blob/refactor/stackprinter/__init__.py#L28-L97
+For now, look at the doc strings, e.g. https://github.com/cknd/stackprinter/blob/refactor/stackprinter/__init__.py#L28-L95
