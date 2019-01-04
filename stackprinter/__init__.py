@@ -52,7 +52,7 @@ def format(thing=None, **kwargs):
     ---
     thing: (optional) exception, sys.exc_info() tuple, frame or thread object
 
-    style: string 'color', 'html' or 'plaintext' (default: 'plaintext')
+    style: string 'color' or 'plaintext' (default: 'plaintext')
         'color': Insert ANSI colored semantic highlights, for use in terminals
                  that support 256 colors or with something like the `ansi2html`
                  package to create colorful log files. There is only one color
