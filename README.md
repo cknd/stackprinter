@@ -13,7 +13,7 @@ This prints detailed Python stack traces, with some more source context and with
 ## Log exceptions
 Call `show` or `format` in an except block to generate a traceback. `show` prints to stderr, `format` returns a string.
 
-By default, both will generate plain text. Pass `style='color'` to get some semantic highlighting. See the docs of `format` to configure exactly _how_ verbose everything should be, blacklisting certain file paths etc.
+By default, both will generate plain text. Pass `style='color'` to get some semantic highlighting. See the docs of `format` to configure exactly _how_ verbose things should be.
 
 ```python
 import stackprinter
@@ -21,7 +21,7 @@ import stackprinter
 try:
     something()
 except:
-    stackprinter.show()  # grab the current exception and print it to stderr
+    stackprinter.show()  # grab the current exception and print a traceback to stderr
 
     # ...or only return a string, e.g. for logging.
     message = stackprinter.format()
@@ -66,7 +66,7 @@ tp.disable()
 
 Basically, this is a frame formatter. For each [frame on the call stack](https://en.wikipedia.org/wiki/Call_stack), it grabs the source code to find out which source lines reference which variables. Then it displays code and variables in the neighbourhood of the last executed line.
 
-Since it knows exactly where each variable occurs in the code, it was hard not to add the whole semantic highlighting thing. It's more a coincidence though that these colors are rendered via 1980ies terminal technology (ANSI color codes). It shouldn't be too difficult to write other formatter types on top of the underlying inspection routines. Say, foldable and clickable HTML pages, with download links for pickled variables?
+Since it needs to know where in the code each variable occurs, it was hard to resist adding the whole semantic highlighting thing. This isn't intrinsically tied to 1980ies terminal technology. It should be fairly straightforward™ to format the same frame representation as, say, a foldable and clickable HTML page with downloadable pickled variables.
 
 # Caveats
 
