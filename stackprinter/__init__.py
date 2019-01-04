@@ -92,6 +92,10 @@ def format(thing=None, **kwargs):
     reverse: bool (default False)
         List the innermost frame first
 
+    add_summary: bool (default: True)
+        Append a short list of all involved paths and source lines, similar
+        to the built-in traceback message.
+
     """
     if isinstance(thing, types.FrameType):
         return fmt.format_stack_from_frame(thing, **kwargs)
@@ -177,7 +181,7 @@ def _format_exception(exc, **kwargs):
     assert _is_exc_info(einfo), "Can't format this exception: %r" % exc
     return fmt.format_exc_info(*einfo, **kwargs)
 
-def _format_thread(thread, **kwargs):
+def _format_thread(thread, add_summary=False, **kwargs):
     try:
         fr = sys._current_frames()[thread.ident]
     except KeyError:

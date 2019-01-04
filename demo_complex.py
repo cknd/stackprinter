@@ -56,13 +56,14 @@ if __name__ == '__main__':
             bla = val.T.\
                   T.T.\
                   T
+
             # here is a comment \
             # that has backslashes \
             # for some reason
             ahoi = "here is a "\
                    "multi line "\
                    "string"
-            np.reshape(bla, 9000)
+            # np.reshape(bla, 9000)
             boing = np.\
                     random.rand(*bla.T.\
                             T.T)
@@ -71,5 +72,4 @@ if __name__ == '__main__':
     try:
         whatever().ahoi()
     except:
-        pass
-        stackprinter.show(style='plaintext', )#suppressed_paths=[r"lib/python.*/site-packages/numpy"])
+        stackprinter.show(style='color', reverse=False, suppressed_paths=[r"lib/python.*/site-packages/numpy"])

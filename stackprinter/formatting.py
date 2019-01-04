@@ -1,3 +1,6 @@
+"""
+Various convnenience methods to walk stacks and concatenate formatted frames
+"""
 import types
 import traceback
 
@@ -5,18 +8,55 @@ import stackprinter.extraction as ex
 from stackprinter.utils import match, get_ansi_tpl
 from stackprinter.frame_formatting import FrameFormatter, ColorfulFrameFormatter
 
+def get_formatter_type(style):
+    if style == 'plaintext':
+        return FrameFormatter
+    elif style ==  'color':
+        return ColorfulFrameFormatter
+    else:
+        raise ValueError("Expected style 'plaintext' or 'color', got %r" % style)
+
+
+def inspect_frames(frames):
+    for fi in frames:
+        if isinstance(fi, ex.FrameInfo):
+            yield fi
+        elif isinstance(fi, types.FrameType):
+            yield ex.get_info(fi)
+        else:
+            raise ValueError("Expected a frame or a FrameInfo tuple, got %r" % fi)
+
+
+def format_summary(frames, style='plaintext', source_lines=1, reverse=False,
+                   **kwargs):
+    """
+    Render a list of frames with 1 line of source context, no variable values.
+
+    keyword args like stackprinter.format()
+    """
+    Formatter = get_formatter_type(style)
+    min_src_lines = 0 if source_lines == 0 else 1
+    minimal_formatter = Formatter(source_lines=min_src_lines,
+                                  show_signature=False,
+                                  show_vals=False)
+
+    frame_msgs = [minimal_formatter(fi) for fi in inspect_frames(frames)]
+    if reverse:
+        frame_msgs = reversed(frame_msgs)
+
+    return ''.join(frame_msgs)
+
 
 def format_stack(frames, style='plaintext', source_lines=5,
                  show_signature=True, show_vals='like_source',
                  truncate_vals=500, reverse=False, suppressed_paths=None):
+    """
+    Render a list of frames (or FrameInfo tuples)
 
+    keyword args like stackprinter.format()
+    """
 
-    if style == 'plaintext':
-        Formatter = FrameFormatter
-    elif style ==  'color':
-        Formatter = ColorfulFrameFormatter
-    else:
-        raise ValueError("Expected style 'plaintext' or 'color', got %r" % style)
+    Formatter = get_formatter_type(style)
 
     min_src_lines = 0 if source_lines == 0 else 1
 
@@ -39,12 +79,7 @@ def format_stack(frames, style='plaintext', source_lines=5,
     frame_msgs = []
     is_boring = False
     parent_is_boring = True
-    for fi in frames:
-        if isinstance(fi, types.FrameType):
-            fi = ex.get_info(fi)
-        elif not isinstance(fi, ex.FrameInfo):
-            raise ValueError("Expected a frame or a FrameInfo tuple, got %r" % fi)
-
+    for fi in inspect_frames(frames):
         is_boring = match(fi.filename, suppressed_paths)
         if is_boring:
             if parent_is_boring:
@@ -63,95 +98,71 @@ def format_stack(frames, style='plaintext', source_lines=5,
     return ''.join(frame_msgs)
 
 
-def format_stack_from_frame(fr, **kwargs):
+def format_stack_from_frame(fr, add_summary=False, **kwargs):
+    """
+    Render a frame and its parents
+
+
+    keyword args like stackprinter.format()
+
+    """
     stack = []
     while fr is not None:
         stack.append(ex.get_info(fr))
         fr = fr.f_back
-
     stack = reversed(stack)
 
     return format_stack(stack, **kwargs)
 
 
-def failsafe(formatter_func, debug=True):
+def format_exc_info(etype, evalue, tb, style='plaintext', add_summary=True,
+                    reverse=False, **kwargs):
     """
-    Recover the built-in traceback if we fall on our face while formatting
+    Format an exception traceback, including the exception message
+
+    keyword args like stackprinter.format()
     """
-    def failsafe_formatter(etype, evalue, tb, *args, **kwargs):
-        try:
-            msg = formatter_func(etype, evalue, tb, **kwargs)
-        except Exception as exc:
-            if debug:
-                raise
-            our_tb = traceback.format_exception(exc.__class__,
-                                                exc,
-                                                exc.__traceback__,
-                                                chain=False)
+    try:
+        frameinfos = [ex.get_info(fr) for fr in ex.walk_traceback(tb)]
+        msgs = []
+        stack = format_stack(frameinfos, style=style, reverse=reverse, **kwargs)
+        msgs.append(stack)
 
-            msg = 'Stackprinter failed:\n%s' % ''.join(our_tb[-2:])
-            msg += 'So here is the original traceback at least:\n\n'
-            msg += ''.join(traceback.format_exception(etype, evalue, tb))
+        if add_summary:
+            summ = format_summary(frameinfos, style=style, reverse=reverse, **kwargs)
+            summ += '\n'
+            msgs.append('------\n')
+            msgs.append(summ)
 
-        return msg
+        exc = format_exception_message(etype, evalue, style=style)
+        msgs.append('\n\n' if reverse else '')
+        msgs.append(exc)
 
-    return failsafe_formatter
+        if reverse:
+            msgs = reversed(msgs)
 
+        msg = ''.join(msgs)
 
-@failsafe
-def format_exc_info(etype, evalue, tb, style='plaintext',
-                    add_summary=True, reverse=False, **kwargs):
+    except Exception as exc:
+        raise
+        our_tb = traceback.format_exception(exc.__class__,
+                                            exc,
+                                            exc.__traceback__,
+                                            chain=False)
 
-    frameinfos = [ex.get_info(fr) for fr in ex.walk_traceback(tb)]
-    # TODO decouple frameinfo-getting from actual formatting, by packing
-    # more of the below to respective methods (to facilitate formatting the
-    # same stack multiple different ways)
-
-
-    # TODO what is this for?
-    if style in ['color', 'html']:
-        fmt_style = 'color'
-    else:
-        fmt_style = 'plaintext'
-
-
-    # TODO move summary generation to format_stack (so thread-formatting can also use it, and)
-    # so multiple format passes over one set of frameinfos is easier
-
-
-    stack_msg = format_stack(frameinfos, style=fmt_style, reverse=reverse, **kwargs)
-    exc_msg = format_exception_message(etype, evalue, style=fmt_style)
-    if add_summary:
-        minimal_kwargs = kwargs.copy()
-        minimal_kwargs['source_lines'] = 1
-        minimal_kwargs['show_vals'] = False
-        minimal_kwargs['show_signature'] = False
-        summary_msg = format_stack(frameinfos, style=fmt_style, reverse=reverse, **minimal_kwargs)
-    else:
-        summary_msg = ''
-
-    if reverse:
-        # TODO do join over list instead
-        msg = exc_msg + '\n\n' + summary_msg + '\n\n' + stack_msg
-    else:
-        msg = stack_msg + '\n' + summary_msg + '\n' + exc_msg
-
-    if style == 'html':
-        from ansi2html import Ansi2HTMLConverter
-        conv = Ansi2HTMLConverter()
-        msg = conv.convert(msg)
+        msg = 'Stackprinter failed:\n%s' % ''.join(our_tb[-2:])
+        msg += 'So here is the original traceback at least:\n\n'
+        msg += ''.join(traceback.format_exception(etype, evalue, tb))
 
     return msg
 
 
-def format_exception_message(etype, evalue, tb=None, style=None):
+def format_exception_message(etype, evalue, tb=None, style='plaintext'):
     type_str = etype.__name__
     val_str = str(evalue)
+
     if val_str:
         type_str += ": "
-
-    if style is None:
-        style = 'plaintext'
 
     if style == 'plaintext':
         return type_str + val_str
@@ -160,6 +171,6 @@ def format_exception_message(etype, evalue, tb=None, style=None):
         normal = get_ansi_tpl(0, 1, 1, bold=True)
         return bold % type_str + normal % val_str
     else:
-        raise ValueError("Expected style 'color' or 'plaintext'")
+        raise ValueError("Expected style 'color' or 'plaintext', got %r" % style)
 
 

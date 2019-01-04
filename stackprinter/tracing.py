@@ -10,7 +10,7 @@ from stackprinter.utils import match
 def trace(*args, suppressed_paths=[], **formatter_kwargs):
     """ get a decorator """
     traceprinter = TracePrinter(suppressed_paths=suppressed_paths,
-                                **formatter_kwargs)
+                                **kwargs)
 
     def deco(f):
         def wrapper(*args, **kwargs):
@@ -32,6 +32,7 @@ class TracePrinter():
                  depth_limit=20,
                  print_function=sys.stderr.write,
                  stop_on_exception=True,
+                 reverse=False,
                  **formatter_kwargs):
 
         self.fmt = get_frame_formatter(**formatter_kwargs)
