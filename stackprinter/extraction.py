@@ -13,48 +13,65 @@ FrameInfo = namedtuple('FrameInfo',
 NON_FUNCTION_SCOPES =  ['<module>', '<lambda>', '<listcomp>']
 
 
-def walk_traceback(tb):
+def get_info(tb_or_frame, lineno=None):
     """
-    Follow the call stack, collecting source lines & variable values
+    Get a frame representation that's easy to format
 
 
     Params
     ---
-    tb: traceback object
+    tb: Traceback object or Frame object
 
-    Yields
+    lineno: int (optional)
+        Override which source line is treated as the important one. For trace-
+        back objects this defaults to the last executed line (tb.tb_lineno).
+        For frame objects, it defaults the currently executed one (fr.f_lineno).
+
+
+    Returns
     ---
+    FrameInfo, a named tuple with the following fields:
 
-    TODO
+         filename: Path of the executed source file
+
+         function: Name of the scope
+
+         lineno: Highlighted line (last executed line)
+
+         source_map: OrderedDict
+            Maps line numbers to a list of tokens. Each token is a (string, type)
+            tuple. Concatenating the first elements of all tokens of all lines
+            restores the original source, weird whitespaces/indentations and all
+            (in contrast to python's built-in `tokenize`). However, multiline
+            statements (those with a trailing backslash) are secretly collapsed
+            into their first line.
+
+         head_lns: (int, int) or (None, None)
+            Line numbers of the beginning and end of the function header
+
+         line2names: dict
+            Maps each line number to a list of variables names that occur there
+
+         name2lines: dict
+            Maps each variable name to a list of line numbers where it occurs
+
+         assignments: OrderedDict
+            Holds current values of all variables that occur in the source and
+            are found in the given frame's locals or globals. Attribute lookups
+            with dot notation are treated as one variable, so if `self.foo.zup`
+            occurs in the source, this dict will get a key 'self.foo.zup' that
+            holds the fully resolved value.
+            (TODO: it would be easy to return the whole attribute lookup chain,
+            so maybe just do that & let formatting decide which parts to show?)
+
     """
-    while tb:
-        yield tb
-        tb = tb.tb_next
 
-
-def walk_frames(frame):
-    """
-    TODO
-    """
-    stack = [frame]
-    while frame.f_back:
-        frame = frame.f_back
-        stack.append(frame)
-
-    for fr in reversed(stack):
-        yield fr
-
-
-def get_info(tb, lineno=None):
-    """
-    # all the line nrs in all returned structures are true (absolute) nrs
-    """
-
-    if isinstance(tb, types.TracebackType):
+    if isinstance(tb_or_frame, types.TracebackType):
+        tb = tb_or_frame
         lineno = tb.tb_lineno if lineno is None else lineno
         frame = tb.tb_frame
-    elif isinstance(tb, types.FrameType):
-        frame = tb
+    elif isinstance(tb_or_frame, types.FrameType):
+        frame = tb_or_frame
         lineno = frame.f_lineno if lineno is None else lineno
     else:
         raise ValueError('Cant inspect this: ' + repr(tb))
@@ -82,8 +99,6 @@ def get_info(tb, lineno=None):
 
     finfo =  FrameInfo(filename, function, lineno, source_map, head_lns,
                        line2names, name2lines, assignments)
-
-
     return finfo
 
 
@@ -145,13 +160,18 @@ def lookup(name, scopeA, scopeB):
         try:
             val = getattr(val, attr)
         except Exception as e:
+            # return a special value in case of lookup errors
+            # (note: getattr can raise anything, e.g. if a complex
+            # @property fails).
             return UnresolvedAttribute(basename, attr_path, k, val,
                                        e.__class__.__name__, str(e))
-
     return val
 
 
 class UnresolvedAttribute():
+    """
+    Container value for failed dot attribute lookups
+    """
     def __init__(self, basename, attr_path, failure_idx, value,
                 exc_type, exc_str):
         self.basename = basename

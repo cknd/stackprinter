@@ -123,7 +123,7 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary=True,
     keyword args like stackprinter.format()
     """
     try:
-        frameinfos = [ex.get_info(fr) for fr in ex.walk_traceback(tb)]
+        frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
         msgs = []
         stack = format_stack(frameinfos, style=style, reverse=reverse, **kwargs)
         msgs.append(stack)
@@ -174,3 +174,10 @@ def format_exception_message(etype, evalue, tb=None, style='plaintext'):
         raise ValueError("Expected style 'color' or 'plaintext', got %r" % style)
 
 
+def _walk_traceback(tb):
+    """
+    Follow a chain of traceback objects outwards
+    """
+    while tb:
+        yield tb
+        tb = tb.tb_next
