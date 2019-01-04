@@ -1,6 +1,6 @@
 ## Python stack formatter
 
-This prints detailed Python stack traces, with some more source context and with current variable contents. It's a quick way to see what your code is doing when you don't have an IDE or even a debugger for some reason, e.g. when your only debugging tool is a log file 😱.
+This prints detailed Python stack traces, with some more source context and with current variable contents. It's a quick way to see what your code is doing when you don't have an IDE or even a debugger for some reason, e.g. when your only debugging tool is a log file 😱
 
 #### Before
 <img src="tb_before.png" width="400">
@@ -11,9 +11,9 @@ This prints detailed Python stack traces, with some more source context and with
 # Usage
 
 ## Log exceptions
-Call `show` or `format` in an except block to generate a traceback.
+Call `show` or `format` in an except block to generate a traceback. `show` prints to stderr, `format` returns a string.
 
-By default, this generates plain text. Pass `style='color'` for semantic highlighting. For the full set of configs see the docs of `format`.
+By default, both will generate plain text. Pass `style='color'` to get semantic highlighting. For the full set of configs see the docs of `format`.
 
 ```python
 import stackprinter
@@ -28,7 +28,7 @@ except:
     message = stackprinter.format()
     logging.log(message)
 ```
-There's also a `stackprinter.set_excepthook`, which replaces the default python crash message (so it works automatically without extra `try/catch`ing).
+There's also `stackprinter.set_excepthook`, which replaces the default python crash message (so it works automatically without manual try/except).
 
 You can also pass things like exception objects explicitely (see docs).
 
@@ -39,7 +39,7 @@ Pass a thread object to `show` or `format`.
 thread = threading.Thread(target=something)
 thread.start()
 while True:
-    stackprinter.show(thread) # or format()
+    stackprinter.show(thread) # or format(thread)
     time.sleep(0.1)
 ```
 
@@ -54,7 +54,7 @@ stackprinter.show() # or format()
 
 More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all function calls & returns 'live' as they are happening. Slows everything down though, of course.
 ```python
-tp = TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"])
+tp = stackprinter.TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"])
 tp.enable()
 a = np.ones(111)
 dosomething(a)
@@ -65,9 +65,9 @@ tp.disable()
 
 # How it works
 
-Basically, this is a frame formatter. For each [frame on the call stack](https://en.wikipedia.org/wiki/Call_stack), it grabs the source code to find out which source lines reference which variables. Then it displays code and variables in the neighbourhood of the last executed line. Since it knows where in the code each variable occurs, it's relatively easy to add semantic highlighting.
+Basically, this is a frame formatter. For each [frame on the call stack](https://en.wikipedia.org/wiki/Call_stack), it grabs the source code to find out which source lines reference which variables. Then it displays code and variables in the neighbourhood of the last executed line.
 
-The frame inspection routines are independent of any actual string formatting, so it should be fairly straightforward to write other formatter types on top. Like, foldable and clickable html pages, with download links for pickled variable contents?
+Since it knows exactly where in the code each variable occurs, it was hard not to add the semantic highlighting thing. It should be fairly straightforward to write other formatter types as well, since the code inspection stuff is quite independent of any actual string formatting. Say, foldable and clickable HTML pages, with download links for pickled variables?
 
 # Caveats
 
