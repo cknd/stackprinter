@@ -3,12 +3,17 @@
 This prints detailed Python stack traces, with more source context and current variable values. It's a quick way to see what your code is doing when your only debugging tool is a log file 😱
 
 #### Before
-<img src="tb_before.png" width="400">
+<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/tb_before.png" width="400">
 
 #### After
-<img src="tb_after.png" width="400">
+<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/tb_after.png" width="400">
 
-# Usage
+## Installation
+
+
+```bash
+pip install stackprinter
+```
 
 ## Logging exception tracebacks
 Call `show` or `format` inside an _except_ block to trace the current exception. `show` prints to stderr, `format` returns a string.
@@ -58,7 +63,7 @@ dosomething(a)
 tp.disable()
 ```
 
-<img src="trace.png" width="400">
+<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/trace.png" width="400">
 
 # How it works
 
