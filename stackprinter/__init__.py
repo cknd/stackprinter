@@ -92,8 +92,8 @@ def format(thing=None, **kwargs):
 
     style: string 'color' or 'plaintext' (default: 'plaintext')
         'color': Insert ANSI colored semantic highlights, for use in terminals
-                 that support 256 colors or with something like the `ansi2html`
-                 package to create colorful log files. There is only one color
+                 that support 256 colors (or with something like the `ansi2html`
+                 package, to create colorful log files). There is only one color
                  scheme and it assumes a dark background.
         'plaintext': Just text.
 
