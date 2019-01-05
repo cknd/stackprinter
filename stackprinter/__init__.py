@@ -28,16 +28,52 @@ def format(thing=None, **kwargs):
     """
     Render a call stack or the traceback of an exception.
 
-    Call this with no argument inside an `except` block to get the traceback
-    for the currently handled exception. Call it with no argument anywhere
-    else to see the current thread's call stack.
+
+    Call this with no argument inside an `except` block to get a traceback for
+    the currently handled exception:
+        ```
+        try:
+            something()
+        except:
+            traceback_message = stackprinter.format(**kwargs)
+        ```
 
     Explicitely pass an exception (or a triple as returned by `sys.exc_info()`)
-    to see the traceback message for that particular exception.
+    to handle that particular exception anywhere, also outside an except block.
+        ```
+        try:
+            something()
+        except Exception as e:
+            last_exc = e
 
-    Pass a frame object to see the call stack leading up to that frame.
+        if last_exc:
+            traceback_message = stackprinter.format(last_exc, **kwargs)
+        ```
 
-    Pass a thread object to see that thread's current call stack.
+    Pass a frame object to see the call stack leading up to that frame:
+        ```
+        stack = stackprinter.format(sys._getframe(0), **kwargs))
+        ```
+
+    Two other ways to see the current call stack:
+        ```
+        # this works anywhere outside exception handling blocks:
+        stack = stackprinter.format(**kwargs)
+
+        # (this works anywhere:)
+        stack = stackprinter.format_current_stack(**kwargs)
+        ```
+
+    Pass a thread object to see its current call stack:
+
+        ```
+        thread = threading.Thread(target=something)
+        thread.start()
+        while True:
+            msg = stackprinter.format(thread, **kwargs))
+            print(msg)
+            time.sleep(0.1)
+        ```
 
     Note:
     This displays variable values as they are _at the time of formatting_. In
@@ -51,6 +87,8 @@ def format(thing=None, **kwargs):
     Params
     ---
     thing: (optional) exception, sys.exc_info() tuple, frame or thread object
+        What to format. Defaults to the currently handled exception or current
+        stack frame.
 
     style: string 'color' or 'plaintext' (default: 'plaintext')
         'color': Insert ANSI colored semantic highlights, for use in terminals
