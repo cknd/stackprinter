@@ -79,4 +79,4 @@ as we want to inspect some thread's call stack (...or is there?)
 
 \*coughs\*
 
-For now, look at the doc strings, e.g. https://github.com/cknd/stackprinter/blob/refactor/stackprinter/__init__.py#L28-L95
+For now, just look at all the doc strings, e.g. of [`format()`](stackprinter/__init__.py#L27-L99)
