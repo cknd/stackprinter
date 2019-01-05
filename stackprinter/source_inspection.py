@@ -1,4 +1,5 @@
 import tokenize
+import warnings
 from keyword import kwlist
 from collections import defaultdict
 
@@ -84,7 +85,10 @@ def annotate(source_lines, line_offset=0, lineno=0, max_line=1e4):
                 regions.append((snippet, RAW))
                 col = tok_start
             snippet = line[tok_start:tok_end]
-            assert snippet == string, "Token doesn't match raw source"
+            if snippet != string:
+                msg = ("Token %r doesn't match raw source %r"
+                       " in line %s: %r" % (string, snippet, ln, line))
+                warnings.warn(msg)
             regions.append((snippet, ttype))
             col = tok_end
 
@@ -135,7 +139,7 @@ def _tokenize(source_lines):
 
     head_s = None
     head_e = None
-
+    name_end = -2
     for ttype, string, (sline, scol), (eline, ecol), line in tokenizer:
         sline -= 1  # we deal in line indices counting from 0
         eline -= 1
@@ -162,9 +166,9 @@ def _tokenize(source_lines):
                 tokens[-1] = [VAR, extended_name, prev[2], (end_line, end_col)]
                 dot_continuation = False
             was_name = True
-
+            name_end = ecol - 1
         else:
-            if string == '.' and was_name:
+            if string == '.' and was_name and scol == name_end + 1:
                 dot_continuation = True
                 continue
             elif string == '(':
@@ -182,6 +186,7 @@ def _tokenize(source_lines):
             if ttype == tokenize.COMMENT:
                 tokens.append([COMMENT, string, (sline, scol), (eline, ecol)])
             was_name = False
+            name_end = -2
 
     # TODO: proper handling of keyword argument assignments: left hand sides
     # should be treated as variables _only_ in the header of the current
