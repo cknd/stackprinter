@@ -25,29 +25,46 @@ class FrameFormatter():
                  show_signature=True, show_vals='like_source', truncate_vals=500,
                  suppressed_paths=None):
         """
-        TODO
+        Formatter for single frames.
+
+        This is essentially a partially applied function -- supply config args
+        to this constructor, then _call_ the resulting object with a frame.
 
 
         Params
         ---
-        source_lines: int or 'all'
-            Selects how much source code will be shown.
-            0: Don't include a source listing.
-            n > 0: Show n lines of code.
+        source_lines: int or 'all'. (default: 5 lines)
+            Select how much source code context will be shown.
+            int 0: Don't include a source listing.
+            int n > 0: Show n lines of code.
             string 'all': Show the whole scope of the frame.
 
-        show_signature: bool
+        source_lines_after: int
+            nr of lines to show after the highlighted one
+
+        show_signature: bool (default True)
             Always include the function header in the source code listing.
 
-        show_vals: str or None
-            Selects which variable assignments will be shown.
+        show_vals: str or None (default 'like_source')
+            Select which variable values will be shown.
             'line': Show only the variables on the highlighted line.
             'like_source': Show those visible in the source listing (default).
             'all': Show every variable in the scope of the frame.
-            None: Don't show any variable assignments.
+            None: Don't show any variable values.
 
-        truncate_vals: int
+        truncate_vals: int (default 500)
             Maximum number of characters to be used for each variable value
+
+        suppressed_paths: list of regex patterns
+            Set less verbose formatting for frames whose code lives in certain paths
+            (e.g. library code). Files whose path matches any of the given regex
+            patterns will be considered boring. The first call to boring code is
+            rendered with fewer code lines (but with argument values still visible),
+            while deeper calls within boring code get a single line and no variable
+            values.
+
+            Example: To hide numpy internals from the traceback, set
+            `suppressed_paths=[r"lib/python.*/site-packages/numpy"]`
         """
 
 
@@ -91,7 +108,8 @@ class FrameFormatter():
             results of `extraction.get_info()` of type FrameInfo. In that case,
             this method will really just do formatting, no more chewing.
 
-        lineno: TODO
+        lineno: int
+            override which line gets highlighted
         """
         accepted_types = (types.FrameType, types.TracebackType, ex.FrameInfo)
         if not isinstance(frame, accepted_types):
@@ -169,7 +187,8 @@ class FrameFormatter():
             return ''
 
 
-def select_scope(fi, lines, lines_after, show_vals, show_signature, suppressed_paths=None):
+def select_scope(fi, lines, lines_after, show_vals, show_signature,
+                 suppressed_paths=None):
     """
     decide which lines of code and which variables will be visible
     """
@@ -238,6 +257,9 @@ def select_scope(fi, lines, lines_after, show_vals, show_signature, suppressed_p
 class ColorfulFrameFormatter(FrameFormatter):
 
     def __init__(self, *args, **kwargs):
+        """
+        See FrameFormatter - this just adds some ANSI color codes here and there
+        """
         self.rng = random.Random()
         highlight = get_ansi_tpl(0., 1., 1., True)
         bright = get_ansi_tpl(0, 0, 1., True)
@@ -263,7 +285,7 @@ class ColorfulFrameFormatter(FrameFormatter):
 
         colormap = self._pick_colors(source_map, fi.name2lines, assignments, fi.lineno)
 
-        if source_map:  # TODO is this if necessary? what happens below with an empty sourcemap?
+        if source_map:
             source_lines = self._format_source(source_map, colormap, fi.lineno)
             msg += self._format_listing(source_lines, fi.lineno)
 

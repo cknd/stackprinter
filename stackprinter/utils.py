@@ -13,11 +13,10 @@ def match(string, patterns):
     return any([bool(re.search(p, string)) for p in patterns])
 
 def inspect_callable(f):
-    # print(repr(f))
-    # import pdb; pdb.set_trace()
-
-
-    # TODO cleanup / refactor
+    """
+    Find out to which object & file a function belongs
+    """
+    # TODO cleanup
 
     owner = getattr(f, '__self__', None)
 

@@ -1,17 +1,13 @@
-# TODO / Idea: Support [] lookups just like . lookups
 import types
 import inspect
 from collections import OrderedDict, namedtuple
-
 from stackprinter.source_inspection import annotate
 
 FrameInfo = namedtuple('FrameInfo',
                        ['filename', 'function', 'lineno', 'source_map',
                         'head_lns', 'line2names', 'name2lines', 'assignments'])
 
-
 NON_FUNCTION_SCOPES =  ['<module>', '<lambda>', '<listcomp>']
-
 
 def get_info(tb_or_frame, lineno=None):
     """
@@ -63,7 +59,7 @@ def get_info(tb_or_frame, lineno=None):
             holds the fully resolved value.
             (TODO: it would be easy to return the whole attribute lookup chain,
             so maybe just do that & let formatting decide which parts to show?)
-
+            (TODO: Support []-lookups just like . lookups)
     """
 
     if isinstance(tb_or_frame, types.TracebackType):

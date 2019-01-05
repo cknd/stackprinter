@@ -1,6 +1,6 @@
 ## Python stack formatter
 
-This prints detailed Python stack traces, with some more source context and with current variable contents. It's a quick way to see what your code is doing when you don't have an IDE or even a debugger for some reason, e.g. when your only debugging tool is a log file 😱
+This prints detailed Python stack traces, with more source context and current variable values. It's a quick way to see what your code is doing when your only debugging tool is a log file 😱
 
 #### Before
 <img src="tb_before.png" width="400">
