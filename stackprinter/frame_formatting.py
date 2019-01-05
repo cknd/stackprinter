@@ -140,7 +140,7 @@ class FrameFormatter():
             msg += self._format_listing(source_lines, fi.lineno)
         if assignments:
             msg += self._format_assignments(assignments, truncate_vals)
-        elif lines > 1 or show_signature:
+        elif lines == 'all' or lines > 1 or show_signature:
             msg += '\n'
 
         return msg
@@ -291,7 +291,7 @@ class ColorfulFrameFormatter(FrameFormatter):
 
         if assignments:
             msg += self._format_assignments(assignments, colormap, truncation)
-        elif lines > 1 or show_signature:
+        elif lines == 'all' or lines > 1 or show_signature:
             msg += '\n'
 
         return msg
