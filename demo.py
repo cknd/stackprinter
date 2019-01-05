@@ -14,6 +14,6 @@ def another_broken_function(k):
 try:
     somelist = [0, 0, np.zeros((23,42)), np.ones((42,23))]
     a_broken_function(somelist)
-except:
-    stackprinter.show(style='color')
+except Exception as e:
+    stackprinter.show(e, style='color')
 

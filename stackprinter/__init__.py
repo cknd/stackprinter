@@ -7,6 +7,7 @@ from functools import wraps
 import stackprinter.formatting as fmt
 from stackprinter.tracing import TracePrinter, trace
 
+
 def _guess_thing(f):
     """ default to the current exception or current stack frame"""
 
@@ -65,7 +66,6 @@ def format(thing=None, **kwargs):
         ```
 
     Pass a thread object to see its current call stack:
-
         ```
         thread = threading.Thread(target=something)
         thread.start()
@@ -138,9 +138,10 @@ def format(thing=None, **kwargs):
     if isinstance(thing, types.FrameType):
         return fmt.format_stack_from_frame(thing, **kwargs)
     elif isinstance(thing, Thread):
-        return _format_thread(thing, **kwargs)
+        return format_thread(thing, **kwargs)
     elif isinstance(thing, Exception):
-        return _format_exception(thing)
+        exc_info = (thing.__class__, thing, thing.__traceback__)
+        return format(exc_info, **kwargs)
     elif _is_exc_info(thing):
         return fmt.format_exc_info(*thing, **kwargs)
     else:
@@ -160,6 +161,7 @@ def show(thing=None, file=sys.stderr, **kwargs):
     print(format(thing, **kwargs), file=file)
 
 
+
 def format_current_stack(**kwargs):
     """ Render the current thread's call stack. Arguments like format() """
     return format(sys._getframe(1), **kwargs)
@@ -167,6 +169,8 @@ def format_current_stack(**kwargs):
 def show_current_stack(**kwargs):
     """ Print the current thread's call stack. Arguments like show() """
     show(sys._getframe(1), **kwargs)
+
+
 
 
 def format_current_exception(**kwargs):
@@ -184,6 +188,7 @@ def show_current_exception(file=sys.stderr, **kwargs):
     kwargs like show()
     """
     print(format_current_exception(**kwargs), file=file)
+
 
 
 def set_excepthook(**kwargs):
@@ -207,19 +212,13 @@ def set_excepthook(**kwargs):
 
         sys.excepthook = hook
 
-
 def remove_exceptook():
     """ Reinstate the default excepthook """
     sys.excepthook = sys.__excepthook__
 
-# --
 
-def _format_exception(exc, **kwargs):
-    einfo = (exc.__class__, exc, exc.__traceback__)
-    assert _is_exc_info(einfo), "Can't format this exception: %r" % exc
-    return fmt.format_exc_info(*einfo, **kwargs)
 
-def _format_thread(thread, add_summary=False, **kwargs):
+def format_thread(thread, add_summary=False, **kwargs):
     try:
         fr = sys._current_frames()[thread.ident]
     except KeyError:
