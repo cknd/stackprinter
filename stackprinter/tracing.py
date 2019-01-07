@@ -10,12 +10,12 @@ from stackprinter.utils import match
 def trace(*args, suppressed_paths=[], **formatter_kwargs):
     """ get a decorator """
     traceprinter = TracePrinter(suppressed_paths=suppressed_paths,
-                                **kwargs)
+                                **formatter_kwargs)
 
     def deco(f):
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **formatter_kwargs):
             traceprinter.enable(current_depth=count_stack(sys._getframe()) + 1)
-            result = f(*args, **kwargs)
+            result = f(*args, **formatter_kwargs)
             traceprinter.disable()
             return result
         return wrapper
