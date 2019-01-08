@@ -130,9 +130,10 @@ def format(thing=None, **kwargs):
     reverse: bool (default False)
         List the innermost frame first
 
-    add_summary: bool (default: True)
+    add_summary: True, False, 'auto'  (default: 'auto')
         Append a short list of all involved paths and source lines, similar
-        to the built-in traceback message.
+        to the built-in traceback message. On auto, do that if the main
+        traceback is longer than 50 lines.
 
     """
     if isinstance(thing, types.FrameType):

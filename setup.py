@@ -5,10 +5,10 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="stackprinter",
-    version="0.1.2",
+    version="0.1.3",
     author="cknd",
     author_email="ck-github@mailbox.org",
-    description="Prettier tracebacks & call stacks with variable values and colorful highlighting",
+    description="Debug-friendly call stacks and tracebacks, with variable values and semantic highlighting",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/cknd/stackprinter",

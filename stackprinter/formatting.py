@@ -115,7 +115,7 @@ def format_stack_from_frame(fr, add_summary=False, **kwargs):
     return format_stack(stack, **kwargs)
 
 
-def format_exc_info(etype, evalue, tb, style='plaintext', add_summary=True,
+def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
                     reverse=False, **kwargs):
     """
     Format an exception traceback, including the exception message
@@ -125,13 +125,17 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary=True,
     try:
         frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
         msgs = []
-        stack = format_stack(frameinfos, style=style, reverse=reverse, **kwargs)
-        msgs.append(stack)
+        stack_msg = format_stack(frameinfos, style=style, reverse=reverse, **kwargs)
+        msgs.append(stack_msg)
+
+        if add_summary == 'auto':
+            add_summary = stack_msg.count('\n') > 50
 
         if add_summary:
             summ = format_summary(frameinfos, style=style, reverse=reverse, **kwargs)
             summ += '\n'
-            msgs.append('------\n')
+            msgs.append('---- (full traceback below) ----\n\n' if reverse else
+                        '---- (full traceback above) ----\n')
             msgs.append(summ)
 
         exc = format_exception_message(etype, evalue, style=style)
