@@ -1,6 +1,6 @@
 ## Python stack formatter
 
-Print prettier tracebacks & call stacks, with more source code context and current variable values, to stay fearless when the only debugging tool is a log file.
+Print nicer tracebacks & call stacks, with more source code and the current variable values. This helps a lot when your only available debugging tool is a printout or a log file.
 
 #### Before
 <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/tb_before.png" width="400">
@@ -16,14 +16,14 @@ pip install stackprinter
 ```
 
 ## Logging exceptions
-To just replace the default python crash message, call `set_excepthook()` somewhere once:
+Call `set_excepthook()` somewhere to replace the default python crash message:
 
 ```python
 import stackprinter
 stackprinter.set_excepthook(style='color')
 ```
 
-For manual mode, call `show` or `format` inside an _except_ block to trace the current exception. `show` prints to stderr, `format` returns a string (for logging). You can also pass exception objects explicitly.
+Call `show` or `format` inside an _except_ block to explicitely see the current exception. `show` prints to stderr, `format` returns a string (for logging). You can also pass previously caught exception objects into these methods.
 
 
 ```python
@@ -37,7 +37,7 @@ except:
     logging.log(message)
 ```
 
-By default, this will generate plain text. Pass `style='color'` to any of these functions to get funky terminal colors (a type of [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), not syntax highlighting). For more configs, [see the docs of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137).
+By default, these calls will generate plain text. Pass `style='color'` to get funky terminal colors (a type of [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), instead of syntax highlighting). For more configs, [see the docs of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137).
 
 ## Printing the call stack of another thread
 Pass a thread object to `show` or `format`.
@@ -91,4 +91,4 @@ as we want to inspect some thread's call stack (...or is there?)
 
 \*coughs\*
 
-For now, just look at all the doc strings, e.g. of [`format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137)
+For now, just look at all the doc strings, [e.g. those of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137)
