@@ -148,7 +148,6 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
         msg = ''.join(msgs)
 
     except Exception as exc:
-        raise
         our_tb = traceback.format_exception(exc.__class__,
                                             exc,
                                             exc.__traceback__,
