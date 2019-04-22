@@ -63,11 +63,9 @@ There's also `show_current_stack()`, which does the same thing everywhere, even
 
 More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all calls & returns 'live' as they are happening. Slows everything down though, of course.
 ```python
-tp = stackprinter.TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"])
-tp.enable()
-a = np.ones(111)
-dosomething(a)
-tp.disable()
+with stackprinter.TracePrinter(style='color'):
+    a = np.ones(111)
+    dosomething(a)
 ```
 
 <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/trace.png" width="400">
