@@ -27,7 +27,7 @@ def _guess_thing(f):
 @_guess_thing
 def format(thing=None, **kwargs):
     """
-    Render a call stack or the traceback of an exception.
+    Render the traceback of an exception or a frame's call stack
 
 
     Call this with no argument inside an `except` block to get a traceback for
@@ -36,7 +36,7 @@ def format(thing=None, **kwargs):
         try:
             something()
         except:
-            traceback_message = stackprinter.format(**kwargs)
+            logger.err(stackprinter.format(**kwargs))
         ```
 
     Explicitely pass an exception (or a triple as returned by `sys.exc_info()`)
@@ -56,23 +56,12 @@ def format(thing=None, **kwargs):
         stack = stackprinter.format(sys._getframe(0), **kwargs))
         ```
 
-    Two other ways to see the current call stack:
-        ```
-        # this works anywhere outside exception handling blocks:
-        stack = stackprinter.format(**kwargs)
-
-        # (this works anywhere:)
-        stack = stackprinter.format_current_stack(**kwargs)
-        ```
-
     Pass a thread object to see its current call stack:
         ```
         thread = threading.Thread(target=something)
         thread.start()
-        while True:
-            msg = stackprinter.format(thread, **kwargs))
-            print(msg)
-            time.sleep(0.1)
+        # (...)
+        stack = stackprinter.format(thread, **kwargs))
         ```
 
     Note:
@@ -86,35 +75,36 @@ def format(thing=None, **kwargs):
 
     Params
     ---
-    thing: (optional) exception, sys.exc_info() tuple, frame or thread object
+    thing: (optional) exception, sys.exc_info() tuple, frame or thread
         What to format. Defaults to the currently handled exception or current
         stack frame.
 
-    style: string 'color' or 'plaintext' (default: 'plaintext')
+    style: string 'plaintext' or 'color'
+        'plaintext' (default): Output just text
         'color': Insert ANSI colored semantic highlights, for use in terminals
                  that support 256 colors (or with something like the `ansi2html`
                  package, to create colorful log files). There is only one color
-                 scheme and it assumes a dark background.
-        'plaintext': Just text.
+                 scheme right now and it assumes a dark background.
 
-    source_lines: int or 'all'. (default: 5 lines)
+    source_lines: int or 'all'
         Select how much source code context will be shown.
         int 0: Don't include a source listing.
-        int n > 0: Show n lines of code.
+        int n > 0 (default 5): Show n lines of code.
         string 'all': Show the whole scope of the frame.
 
     show_signature: bool (default True)
         Always include the function header in the source code listing.
 
-    show_vals: str or None (default 'like_source')
+    show_vals: str or None
         Select which variable values will be shown.
         'line': Show only the variables on the highlighted line.
-        'like_source': Show those visible in the source listing (default).
+        'like_source' (default): Show only those visible in the source listing
         'all': Show every variable in the scope of the frame.
         None: Don't show any variable values.
 
-    truncate_vals: int (default 500)
-        Maximum number of characters to be used for each variable value
+    truncate_vals: int
+        Maximum number of characters to be used for each variable value.
+        Default: 500
 
     suppressed_paths: list of regex patterns
         Set less verbose formatting for frames whose code lives in certain paths
@@ -127,13 +117,13 @@ def format(thing=None, **kwargs):
         Example: To hide numpy internals from the traceback, set
         `suppressed_paths=[r"lib/python.*/site-packages/numpy"]`
 
-    reverse: bool (default False)
-        List the innermost frame first
+    reverse: bool
+        List the innermost frame first.
 
-    add_summary: True, False, 'auto'  (default: 'auto')
+    add_summary: True, False, 'auto'
         Append a short list of all involved paths and source lines, similar
-        to the built-in traceback message. On auto, do that if the main
-        traceback is longer than 50 lines.
+        to the built-in traceback message.
+        'auto' (default): do that if the main traceback is longer than 50 lines.
 
     """
     if isinstance(thing, types.FrameType):
@@ -154,21 +144,38 @@ def format(thing=None, **kwargs):
 @_guess_thing
 def show(thing=None, file=sys.stderr, **kwargs):
     """
-    Print a stack trace or the traceback message for an exception.
+    Print the traceback of an exception or a frame's call stack
 
-    See `format` for full docs. This function is identical to `format` except
-    that it directly prints the result to `file`, defaulting to sys.stderr
+    Params
+    ---
+    file: file-like object (stream)
+        defaults to stderr
+
+    **kwargs:
+        See `format`
     """
     print(format(thing, **kwargs), file=file)
 
 
 
 def format_current_stack(**kwargs):
-    """ Render the current thread's call stack. Arguments like format() """
+    """ Render the current thread's call stack.
+
+    Params
+    --
+    **kwargs:
+        See `format`
+    """
     return format(sys._getframe(1), **kwargs)
 
 def show_current_stack(**kwargs):
-    """ Print the current thread's call stack. Arguments like show() """
+    """ Print the current thread's call stack.
+
+    Params
+    --
+    **kwargs:
+        See `show`
+    """
     show(sys._getframe(1), **kwargs)
 
 
@@ -178,7 +185,10 @@ def format_current_exception(**kwargs):
     """
     Render a traceback for the currently handled exception.
 
-    kwargs like format()
+    Params
+    --
+    **kwargs:
+        See `format`
     """
     return format(sys.exc_info(), **kwargs)
 
@@ -186,7 +196,10 @@ def show_current_exception(file=sys.stderr, **kwargs):
     """
     Print a traceback for the currently handled exception.
 
-    kwargs like show()
+    Params
+    --
+    **kwargs:
+        See `show`
     """
     print(format_current_exception(**kwargs), file=file)
 
@@ -200,7 +213,10 @@ def set_excepthook(**kwargs):
     i.e. the interpreter never sees an uncaught exception (and Ipython resets
     the excepthook for its own purposes, anyway).
 
-    kwargs like show()
+    Params
+    --
+    **kwargs:
+        See `show`
     """
     if _is_running_in_ipython():
         warnings.warn("Excepthooks have no effect when running under Ipython - "
