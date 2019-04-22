@@ -1,7 +1,6 @@
 from stackprinter import trace, TracePrinter
 import numpy as np
 
-# @trace(style='color')
 def dosomething(x):
     y = dosomethingelse(x)
     return y
@@ -20,8 +19,7 @@ def doYetAnotherThing(z):
 
 
 
-tp = TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"])
-tp.enable()
-a = np.ones(123)
-dosomething(a)
-tp.disable()
+# with TracePrinter(style='color', suppressed_paths=[r"lib/python.*/site-packages/numpy"]):
+with TracePrinter(style='plaintext'):
+    a = np.ones(123)
+    dosomething(a)

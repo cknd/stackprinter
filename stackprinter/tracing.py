@@ -8,7 +8,31 @@ from stackprinter.utils import match
 
 
 def trace(*args, suppressed_paths=[], **formatter_kwargs):
-    """ get a decorator """
+    """
+    Get a decorator to print all calls & returns in a function
+
+    Example:
+    ```
+    @trace(style='color', depth_limit=5)
+    def dosometing():
+        (...)
+    ```
+
+    Params
+    ---
+    Accepts all keyword wargs accepted by stackprinter.format, and:
+
+    depth_limit: int (default: 20)
+        How many nested calls will be followed
+
+    print_function: callable (default: sys.stderr.write)
+        some function of your choice that accepts a string
+
+    stop_on_exception: bool (default: True)
+        If False, plow through exceptions
+
+
+    """
     traceprinter = TracePrinter(suppressed_paths=suppressed_paths,
                                 **formatter_kwargs)
 
@@ -27,21 +51,56 @@ def trace(*args, suppressed_paths=[], **formatter_kwargs):
 
 
 class TracePrinter():
+    """
+    Print a trace of all calls & returns in a piece of code as they are executed
+
+    Example:
+    ```
+    with Traceprinter(style='color', depth_limit=5):
+        dosomething()
+        dosomethingelse()
+    ```
+
+    Params
+    ---
+    Accepts all keyword wargs accepted by stackprinter.format, and:
+
+    depth_limit: int (default: 20)
+        How many nested calls will be followed
+
+    print_function: callable (default: sys.stderr.write)
+        some function of your choice that accepts a string
+
+    stop_on_exception: bool (default: True)
+        If False, plow through exceptions
+
+    """
+
     def __init__(self,
                  suppressed_paths=[],
                  depth_limit=20,
                  print_function=sys.stderr.write,
                  stop_on_exception=True,
-                 reverse=False,
                  **formatter_kwargs):
 
         self.fmt = get_frame_formatter(**formatter_kwargs)
-        self.fmt_style = formatter_kwargs.get('style', None)
+        self.fmt_style = formatter_kwargs.get('style', 'plaintext')
         assert isinstance(suppressed_paths, list)
         self.suppressed_paths = suppressed_paths
         self.emit = print_function
         self.depth_limit = depth_limit
         self.stop_on_exception = stop_on_exception
+
+    def __enter__(self):
+        depth = count_stack(sys._getframe(1))
+        self.enable(current_depth=depth)
+        return self
+
+    def __exit__(self, etype, evalue, tb):
+        self.disable()
+        if etype is None:
+            return True
+
 
     def enable(self, force=False, current_depth=None):
         if current_depth is None:
