@@ -1,7 +1,6 @@
 if __name__ == '__main__':
 
     from stackprinter import TracePrinter, trace
-    # tp = TracePrinter(style='color'); tp.enable()
     import time
     import sys
     import numpy as np
