@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="stackprinter",
-    version="0.1.4",
+    version="0.1.5",
     author="cknd",
     author_email="ck-github@mailbox.org",
     description="Debug-friendly call stacks & tracebacks with variable values and semantic highlighting",
