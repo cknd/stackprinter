@@ -1,4 +1,5 @@
 import re
+import types
 import inspect
 import colorsys
 from collections import OrderedDict
@@ -25,6 +26,8 @@ def inspect_callable(f):
 
     if inspect.isfunction(f):
         code = f.__code__
+    # elif isinstance(f, types.BuiltinFunctionType):
+    # ?
     else:
         return None, None, None, None
 

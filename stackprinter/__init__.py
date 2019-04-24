@@ -148,12 +148,17 @@ def show(thing=None, file=sys.stderr, **kwargs):
 
     Params
     ---
-    file: file-like object (stream)
+    file: 'stderr', 'stdout' or file-like object
         defaults to stderr
 
     **kwargs:
         See `format`
     """
+    if file == 'stderr':
+        file = sys.stderr
+    elif file == 'stdout':
+        file = sys.stdout
+
     print(format(thing, **kwargs), file=file)
 
 
@@ -209,9 +214,23 @@ def set_excepthook(**kwargs):
     """
     Set sys.excepthook to print a detailed traceback for any uncaught exception.
 
-    This doesn't work in IPython, since Ipython handles exceptions internally
-    i.e. the interpreter never sees an uncaught exception (and Ipython resets
-    the excepthook for its own purposes, anyway).
+    Examples:
+
+    ```
+    set_excepthook(file='stdout')    # print to stdout instead of stderr
+
+    ```
+
+    ```
+    set_excepthook(style=color)  # do ansi colors
+    ```
+
+    If running under Ipython, this will, with a heavy heart, attempt to monkey
+    patch Ipython's traceback printer (which handles all exceptions internally,
+    thus bypassing the system excepthook). You can decide whether this sounds
+    like a sane idea.
+
+    To undo, call `remove_excepthook`.
 
     Params
     --
@@ -219,20 +238,68 @@ def set_excepthook(**kwargs):
         See `show`
     """
     if _is_running_in_ipython():
-        warnings.warn("Excepthooks have no effect when running under Ipython - "
-                      "capture exceptions manually to print tracebacks for them.",
-                      stacklevel=2)
-        return
+        _patch_ipython_excepthook(**kwargs)
     else:
         def hook(*args):
             show(args, **kwargs)
 
         sys.excepthook = hook
 
-def remove_exceptook():
+
+def remove_excepthook():
     """ Reinstate the default excepthook """
+    if _is_running_in_ipython():
+        _unpatch_ipython_excepthook()
     sys.excepthook = sys.__excepthook__
 
+
+def _is_running_in_ipython():
+    try:
+        return __IPYTHON__
+    except NameError:
+        return False
+
+
+ipy_tb = None
+
+def _patch_ipython_excepthook(**kwargs):
+    """ Replace ipython's built-in traceback printer, excellent though it is"""
+    global ipy_tb
+
+    blacklist = kwargs.get('suppressed_paths', [])
+    blacklist.append('site-packages/IPython/')
+    kwargs['suppressed_paths'] = blacklist
+
+    if 'file' in kwargs:
+        del kwargs['file']
+
+    def format_tb(*exc_tuple, **__):
+        unstructured_tb = format(exc_tuple, **kwargs)
+        structured_tb = [unstructured_tb]  # \*coughs*
+        return structured_tb
+
+    import IPython
+    shell = IPython.get_ipython()
+    if ipy_tb is None:
+        ipy_tb = shell.InteractiveTB.structured_traceback
+    shell.InteractiveTB.structured_traceback = format_tb
+
+
+def _unpatch_ipython_excepthook():
+    """ restore proper order in Ipython """
+    import IPython
+    shell = IPython.get_ipython()
+    if ipy_tb is not None:
+        shell.InteractiveTB.structured_traceback = ipy_tb
+
+
+def _is_exc_info(thing):
+    if not isinstance(thing, tuple) or len(thing) != 3:
+        return False
+    a, b, c = thing
+    return (isinstance(a, type) and BaseException in a.mro() and
+            isinstance(b, BaseException) and
+            isinstance(c, types.TracebackType))
 
 
 def format_thread(thread, add_summary=False, **kwargs):
@@ -248,22 +315,3 @@ def format_thread(thread, add_summary=False, **kwargs):
         msg = fmt.format_stack_from_frame(fr, **kwargs)
         msg_indented = '    ' + '\n    '.join(msg.split('\n')).strip()
         return "%r\n\n%s" % (thread, msg_indented)
-
-
-def _is_exc_info(thing):
-    if not isinstance(thing, tuple) or len(thing) != 3:
-        return False
-    a, b, c = thing
-    return (isinstance(a, type) and BaseException in a.mro() and
-            isinstance(b, BaseException) and
-            isinstance(c, types.TracebackType))
-
-
-def _is_running_in_ipython():
-    fr = sys._getframe(1)
-    while fr.f_back:
-        if fr.f_code.co_name == 'start_ipython':
-            return True
-        fr = fr.f_back
-    return False
-
