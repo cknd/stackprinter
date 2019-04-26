@@ -5,16 +5,16 @@ import types
 import traceback
 
 import stackprinter.extraction as ex
+import stackprinter.colorschemes as colorschemes
 from stackprinter.utils import match, get_ansi_tpl
 from stackprinter.frame_formatting import FrameFormatter, ColorfulFrameFormatter
 
-def get_formatter_type(style):
-    if style == 'plaintext':
-        return FrameFormatter
-    elif style ==  'color':
-        return ColorfulFrameFormatter
+
+def get_formatter(style, **kwargs):
+    if style in ['plaintext', 'plain']:
+        return FrameFormatter(**kwargs)
     else:
-        raise ValueError("Expected style 'plaintext' or 'color', got %r" % style)
+        return ColorfulFrameFormatter(style, **kwargs)
 
 
 def inspect_frames(frames):
@@ -34,11 +34,11 @@ def format_summary(frames, style='plaintext', source_lines=1, reverse=False,
 
     keyword args like stackprinter.format()
     """
-    Formatter = get_formatter_type(style)
     min_src_lines = 0 if source_lines == 0 else 1
-    minimal_formatter = Formatter(source_lines=min_src_lines,
-                                  show_signature=False,
-                                  show_vals=False)
+    minimal_formatter = get_formatter(style=style,
+                                      source_lines=min_src_lines,
+                                      show_signature=False,
+                                      show_vals=False)
 
     frame_msgs = [minimal_formatter(fi) for fi in inspect_frames(frames)]
     if reverse:
@@ -56,25 +56,27 @@ def format_stack(frames, style='plaintext', source_lines=5,
     keyword args like stackprinter.format()
     """
 
-    Formatter = get_formatter_type(style)
 
     min_src_lines = 0 if source_lines == 0 else 1
 
-    minimal_formatter = Formatter(source_lines=min_src_lines,
-                                  show_signature=False,
-                                  show_vals=False)
+    minimal_formatter = get_formatter(style=style,
+                                      source_lines=min_src_lines,
+                                      show_signature=False,
+                                      show_vals=False)
 
-    reduced_formatter = Formatter(source_lines=min_src_lines,
-                                  show_signature=show_signature,
-                                  show_vals=show_vals,
-                                  truncate_vals=truncate_vals,
-                                  suppressed_paths=suppressed_paths)
+    reduced_formatter = get_formatter(style=style,
+                                      source_lines=min_src_lines,
+                                      show_signature=show_signature,
+                                      show_vals=show_vals,
+                                      truncate_vals=truncate_vals,
+                                      suppressed_paths=suppressed_paths)
 
-    verbose_formatter = Formatter(source_lines=source_lines,
-                                  show_signature=show_signature,
-                                  show_vals=show_vals,
-                                  truncate_vals=truncate_vals,
-                                  suppressed_paths=suppressed_paths)
+    verbose_formatter = get_formatter(style=style,
+                                      source_lines=source_lines,
+                                      show_signature=show_signature,
+                                      show_vals=show_vals,
+                                      truncate_vals=truncate_vals,
+                                      suppressed_paths=suppressed_paths)
 
     frame_msgs = []
     is_boring = False
@@ -169,13 +171,13 @@ def format_exception_message(etype, evalue, tb=None, style='plaintext'):
 
     if style == 'plaintext':
         return type_str + val_str
-    elif style == 'color':
-        bold = get_ansi_tpl(0, 1, 1, bold=True)
-        normal = get_ansi_tpl(0, 1, 1, bold=True)
-        return bold % type_str + normal % val_str
     else:
-        raise ValueError("Expected style 'color' or 'plaintext', got %r" % style)
+        sc = getattr(colorschemes, style)
 
+        clr_head = get_ansi_tpl(*sc.colors['exception_type'])
+        clr_msg = get_ansi_tpl(*sc.colors['exception_msg'])
+
+        return clr_head % type_str + clr_msg % val_str
 
 def _walk_traceback(tb):
     """

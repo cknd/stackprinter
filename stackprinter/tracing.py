@@ -2,7 +2,7 @@ import sys
 import inspect
 
 from stackprinter.frame_formatting import FrameFormatter, ColorfulFrameFormatter
-from stackprinter.formatting import format_exception_message
+from stackprinter.formatting import format_exception_message, get_formatter
 from stackprinter import prettyprinting as ppr
 from stackprinter.utils import match
 
@@ -83,7 +83,7 @@ class TracePrinter():
                  stop_on_exception=True,
                  **formatter_kwargs):
 
-        self.fmt = get_frame_formatter(**formatter_kwargs)
+        self.fmt = get_formatter(**formatter_kwargs)
         self.fmt_style = formatter_kwargs.get('style', 'plaintext')
         assert isinstance(suppressed_paths, list)
         self.suppressed_paths = suppressed_paths
@@ -183,14 +183,6 @@ def add_indent(string, depth=1, max_depth=10):
     lines = [indent + line + '\n' for line in string.splitlines()]
     indented = ''.join(lines)
     return indented
-
-
-def get_frame_formatter(style='plaintext', **kwargs):
-    if style == 'plaintext':
-        Formatter = FrameFormatter
-    elif style == 'color':
-        Formatter = ColorfulFrameFormatter
-    return Formatter(**kwargs)
 
 
 def count_stack(frame):

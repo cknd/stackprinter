@@ -1,19 +1,19 @@
-import random
 import types
 import os
 
 from collections import OrderedDict
 import stackprinter.extraction as ex
 import stackprinter.source_inspection as sc
+import stackprinter.colorschemes as colorschemes
+
 from stackprinter.prettyprinting import format_value
 from stackprinter.utils import inspect_callable, match, trim_source, get_ansi_tpl
 
-
 class FrameFormatter():
     headline_tpl = "File %s, line %s, in %s\n"
-    sourceline_tpl = "    %-3s   %s"
+    sourceline_tpl = "    %-3s  %s"
     single_sourceline_tpl = "   %s"
-    marked_sourceline_tpl = "--> %-3s   %s"
+    marked_sourceline_tpl = "--> %-3s  %s"
     elipsis_tpl = " (...)\n"
     var_indent = 5
     sep_vars = "%s%s" % ((' ') * 4, ('.' * 50))
@@ -225,7 +225,7 @@ def select_scope(fi, lines, lines_after, show_vals, show_signature,
         elif show_vals == 'like_source':
             val_lines = source_lines
         elif show_vals == 'line':
-            val_lines = [lineno]
+            val_lines = [lineno] if source_lines else []
 
         # TODO refactor the whole blacklistling mechanism below:
 
@@ -256,23 +256,28 @@ def select_scope(fi, lines, lines_after, show_vals, show_signature,
 
 class ColorfulFrameFormatter(FrameFormatter):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, style='darkbg', **kwargs):
         """
         See FrameFormatter - this just adds some ANSI color codes here and there
         """
-        self.rng = random.Random()
-        highlight = get_ansi_tpl(0., 1., 1., True)
-        bright = get_ansi_tpl(0, 0, 1., True)
-        medium = get_ansi_tpl(0, 0, 0.8, True)
-        darker = get_ansi_tpl(0, 0, 0.4, False)
-        dark = get_ansi_tpl(0, 0, 0.2, True)
+        self.colors = getattr(colorschemes, style)()
 
-        self.headline_tpl = bright % "File %s%s" + highlight % "%s" + bright % ", line %s, in %s\n"
-        self.sourceline_tpl = dark % super().sourceline_tpl
-        self.marked_sourceline_tpl = medium % super().marked_sourceline_tpl
-        self.elipsis_tpl = darker % super().elipsis_tpl
-        self.sep_vars = darker % super().sep_vars
-        super().__init__(*args, **kwargs)
+        highlight = self.tpl('highlight')
+        header = self.tpl('header')
+        arrow_lineno = self.tpl('arrow_lineno')
+        dots = self.tpl('dots')
+        lineno = self.tpl('lineno')
+
+        self.headline_tpl = header % "File %s%s" + highlight % "%s" + header % ", line %s, in %s\n"
+        self.sourceline_tpl = lineno % super().sourceline_tpl
+        self.marked_sourceline_tpl = arrow_lineno % super().marked_sourceline_tpl
+        self.elipsis_tpl = dots % super().elipsis_tpl
+        self.sep_vars = dots % super().sep_vars
+
+        super().__init__(**kwargs)
+
+    def tpl(self, name):
+        return get_ansi_tpl(*self.colors[name])
 
     def _format_frame(self, fi, lines, lines_after, show_vals,
                       show_signature, truncation, suppressed_paths):
@@ -297,9 +302,9 @@ class ColorfulFrameFormatter(FrameFormatter):
         return msg
 
     def _format_source(self, source_map, colormap, lineno):
-        bold_tp =     get_ansi_tpl(0.,0.,0.8, True)
-        default_tpl = get_ansi_tpl(0.,0.,0.8, False)
-        comment_tpl = get_ansi_tpl(0.,0.,0.2, False)
+        bold_tp = self.tpl('source_bold')
+        default_tpl = self.tpl('source_default')
+        comment_tpl = self.tpl('source_comment')
 
         source_lines = OrderedDict()
         for ln in source_map:
@@ -331,7 +336,7 @@ class ColorfulFrameFormatter(FrameFormatter):
                                    indent=len(name) + self.var_indent + 3,
                                    truncation=truncation)
             assign_str = self.val_tpl % (name, val_str)
-            hue, sat, val, bold = colormap.get(name, (0.6, 0.4, 0.4, False))
+            hue, sat, val, bold = colormap.get(name, self.colors['var_invisible'])
             clr_str = get_ansi_tpl(hue, sat, val, bold) % assign_str
             msgs.append(clr_str)
         if len(msgs) > 0:
@@ -353,24 +358,20 @@ class ColorfulFrameFormatter(FrameFormatter):
                     colormap[name] = self._pick_color(name, value, highlight)
         return colormap
 
-    def _pick_color(self, name, val, highlight=False, style='id'):
-        if style == 'formatted':
+    def _pick_color(self, name, val, highlight=False, method='id'):
+        if method == 'formatted':
             seed = format_value(val)
-        elif style == 'repr':
+        elif method == 'repr':
             seed = repr(val)
-        elif style == 'id':
+        elif method == 'id':
             seed = id(val)
-        elif style == 'name':
+        elif method == 'name':
             seed = name
         else:
-            raise ValueError('Unkwnown color style: %s' % style)
+            raise ValueError('%r' % method)
 
-        self.rng.seed(seed)
-        hue = self.rng.uniform(0.05,0.7)
-        # if hue < 0:
-        #     hue = hue + 1
-        sat = 1. if highlight else 1.
-        val = 1. if highlight else 0.3
-        bold = highlight
-        return (hue, sat, val, bold)
+        return self.colors.get_random(seed, highlight)
+
+
+
 

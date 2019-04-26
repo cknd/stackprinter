@@ -30,7 +30,7 @@ def format(thing=None, **kwargs):
     Render the traceback of an exception or a frame's call stack
 
 
-    Call this with no argument inside an `except` block to get a traceback for
+    Call this without arguments inside an `except` block to get a traceback for
     the currently handled exception:
         ```
         try:
@@ -48,12 +48,12 @@ def format(thing=None, **kwargs):
             last_exc = e
 
         if last_exc:
-            traceback_message = stackprinter.format(last_exc, **kwargs)
+            logger.err(stackprinter.format(last_exc, **kwargs))
         ```
 
     Pass a frame object to see the call stack leading up to that frame:
         ```
-        stack = stackprinter.format(sys._getframe(0), **kwargs))
+        stack = stackprinter.format(sys._getframe(2), **kwargs))
         ```
 
     Pass a thread object to see its current call stack:
@@ -79,17 +79,18 @@ def format(thing=None, **kwargs):
         What to format. Defaults to the currently handled exception or current
         stack frame.
 
-    style: string 'plaintext' or 'color'
+    style: string
         'plaintext' (default): Output just text
-        'color': Insert ANSI colored semantic highlights, for use in terminals
-                 that support 256 colors (or with something like the `ansi2html`
-                 package, to create colorful log files). There is only one color
-                 scheme right now and it assumes a dark background.
+
+        'color', 'darkbg', 'lightbg', 'darkbg2', 'lightbg2':
+            Output ANSI-colors, for use with terminals that support 256
+            colors, notebooks or something like the `ansi2html` package,
+            to create colorful log files.
 
     source_lines: int or 'all'
         Select how much source code context will be shown.
         int 0: Don't include a source listing.
-        int n > 0 (default 5): Show n lines of code.
+        int n > 0: Show n lines of code. (default: 5)
         string 'all': Show the whole scope of the frame.
 
     show_signature: bool (default True)
@@ -121,7 +122,7 @@ def format(thing=None, **kwargs):
         List the innermost frame first.
 
     add_summary: True, False, 'auto'
-        Append a short list of all involved paths and source lines, similar
+        Append a compact list of involved files and source lines, similar
         to the built-in traceback message.
         'auto' (default): do that if the main traceback is longer than 50 lines.
 

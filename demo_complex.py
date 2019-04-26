@@ -71,4 +71,5 @@ if __name__ == '__main__':
     try:
         whatever().ahoi()
     except:
-        stackprinter.show(style='color', reverse=False, suppressed_paths=[r"lib/python.*/site-packages/numpy"])
+        # raise
+        stackprinter.show(style='darkbg', reverse=False, suppressed_paths=[r"lib/python.*/site-packages/numpy"])

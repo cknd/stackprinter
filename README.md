@@ -51,12 +51,12 @@ File demo.py, line 4, in <lambda>
 TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
 
-By default, it tries to be somewhat polite about screen space. (It only shows a few source lines and the function header, and only the variables in the visible code, and only 500 character per variable). You can configure exactly how verbose things should be. It also attempts advanced stunts like "dot attribute lookups" and "showing the shape of numpy arrays", and you can have [funky colors like this](https://github.com/cknd/stackprinter/blob/master/tb_after.png?raw=true).
+By default, it tries to be somewhat polite about screen space. (It only shows a few source lines and the function header, and only the variables in the visible code, and only 500 character per variable). You can configure exactly how verbose things should be. It also attempts advanced stunts like "dot attribute lookups" and "showing the shape of numpy arrays", and you can have [funky colors like this](https://github.com/cknd/stackprinter/blob/master/darkbg.png?raw=true).
 
 # Usage
 
 ## Exception logging
-To globally replace the default python crash message, call `set_excepthook()` somewhere. This will print any uncaught exception to stderr (by default).
+To globally replace the default python crash message, call `set_excepthook()` somewhere. This will print any uncaught exception.
 
 ```python
 import stackprinter
@@ -97,11 +97,14 @@ for err in errors:
     logging.log(message)
 ```
 
-By default, all these calls will generate plain text. Pass `style='color'` to get [funky terminal colors like this](https://github.com/cknd/stackprinter/blob/master/tb_after.png?raw=true). (It's an attempt at [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), i.e. colors mark the different variables instead of language syntax.)
+By default, the output is plain text, which is good for log files. You can get colors🌈 if you call any of the mentioned functions with `style='darkbg'` or `style='lightbg'` (or `'darkbg2'` or `'lightbg2'`).
+<img src="https://raw.githubusercontent.com/cknd/stackprinter/feature_colorschemes/darkbg.png" width="300"> <img src="https://raw.githubusercontent.com/cknd/stackprinter/feature_colorschemes/notebook.png" width="300">
+
+(It's an attempt at [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), i.e. the colors follow the different variables instead of the language syntax. Also, the jupyter notebook support is a complete hack.)
 
 You can blacklist certain file paths, to make the stack less verbose whenever it runs through those files. For example, if you call `format(exc, suppressed_paths=[r"lib/python.*/site-packages"])`, calls within installed libraries are shrunk to one line each.
 
-For more options & details, [see the docs of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137).
+For more options & details, for now, [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127). All those keyword arguments behave the same in `show` and `set_excepthook`. And one day there might be proper html docs.
 
 ## Printing the current stack of another thread
 Apart from exception tracebacks, you can also print the call stack of any live, running thread. Pass the thread object to `show` or `format`:
@@ -126,20 +129,19 @@ stackprinter.show() # or format()
 
 More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all calls & returns 'live' as they are happening. Slows everything down though, of course.
 ```python
-with stackprinter.TracePrinter(style='color'):
+with stackprinter.TracePrinter(style='darkbg'):
     dosomething()
 ```
 
 or, to avoid indenting existing code:
 ```python
-tp = stackprinter.TracePrinter(style='color')
+tp = stackprinter.TracePrinter(style='darkbg')
 tp.enable()
 dosomething()
 # (...) +1 million lines
 tp.disable()
 ```
-
-<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/trace.png" width="400">
+<img src="https://raw.githubusercontent.com/cknd/stackprinter/feature_colorschemes/trace.png" width="400">
 
 # How it works
 
