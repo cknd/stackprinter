@@ -53,7 +53,7 @@ TypeError: unsupported operand type(s) for +: 'int' and 'str'
 
 By default, it tries to be somewhat polite about screen space. (It only shows a few source lines and the function header, and only the variables in the visible code, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127) exactly how verbose things should be. It also attempts advanced stunts like "dot attribute lookups", "showing the shape of numpy arrays".
 
-By default, the output is plain text, which is good for log files. For some reason, there is also a color mode 🌈, enabled by passing `style='darkbg'` or `style='lightbg'` to any of the methods below (or `'darkbg2'` or `'lightbg2'`). It's an attempt at [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), i.e. the colors follow the different variables instead of the syntax, like so:
+The default output is plain text, which is good for log files. For some reason, there is also a color mode 🌈, enabled by passing `style='darkbg'` or `style='lightbg'` to any of the methods below (or `'darkbg2'` or `'lightbg2'`). It's an attempt at [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), i.e. the colors follow the different variables instead of the syntax, like so:
 
 <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/darkbg.png" width="400">   <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/notebook.png" width="400">
 
