@@ -223,7 +223,7 @@ def set_excepthook(**kwargs):
     ```
 
     ```
-    set_excepthook(style=color)  # do ansi colors
+    set_excepthook(style='darkbg')  # do ansi colors
     ```
 
     If running under Ipython, this will, with a heavy heart, attempt to monkey
