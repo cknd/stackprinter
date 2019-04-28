@@ -56,7 +56,7 @@ By default, it tries to be somewhat polite about screen space. (It only shows a 
 # Usage
 
 ## Exception logging
-To globally replace the default python crash message, call `set_excepthook()` somewhere. This will print any uncaught exception to stderr by default.
+To globally replace the default python crash message, call `set_excepthook()` somewhere. This will print any uncaught exception to stderr by default. You could also [make this permanent for your python installation](#making-it-stick).
 
 ```python
 import stackprinter
@@ -122,6 +122,20 @@ thread.start()
 # (...)
 stackprinter.show(thread) # or format(thread)
 ```
+
+## Making it stick
+
+To permanently replace the crash message for your python installation, you *could* put a file `sitecustomize.py` into the `site-packages` directory under one of the paths revealed by `python -c "import site; print(site.PREFIXES)"`, with contents like this:
+
+```python
+    # in e.g. some_virtualenv/lib/python3.x/site-packages/sitecustomize.py:
+    import stackprinter
+    stackprinter.set_excepthook(style='darkbg')
+```
+
+That will give you colorful tracebacks automatically every time, even in the REPL.
+
+(You could do a similar thing for IPython, [but they have their own method](https://ipython.readthedocs.io/en/stable/interactive/tutorial.html?highlight=startup#configuration), where the file goes into `~/.ipython/profile_default/startup` instead, and also I don't want to talk about what this module does to set an excepthook under IPython.)
 
 # How it works
 
