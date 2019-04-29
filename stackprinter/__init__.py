@@ -39,7 +39,7 @@ def format(thing=None, **kwargs):
             logger.err(stackprinter.format(**kwargs))
         ```
 
-    Explicitely pass an exception (or a triple as returned by `sys.exc_info()`)
+    Explicitly pass an exception (or a triple as returned by `sys.exc_info()`)
     to handle that particular exception anywhere, also outside an except block.
         ```
         try:
