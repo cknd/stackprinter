@@ -82,7 +82,7 @@ except:
 ```
 You can also pass a previously caught exception object explicitly.
 ```python
-# or explicitely grab a particular exception
+# or explicitly grab a particular exception
 try:
     something()
 except ValueError as e:
