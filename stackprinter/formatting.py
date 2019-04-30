@@ -125,20 +125,21 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
     keyword args like stackprinter.format()
     """
     try:
-        frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
         msgs = []
-        stack_msg = format_stack(frameinfos, style=style, reverse=reverse, **kwargs)
-        msgs.append(stack_msg)
+        if tb:
+            frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
+            stack_msg = format_stack(frameinfos, style=style, reverse=reverse, **kwargs)
+            msgs.append(stack_msg)
 
-        if add_summary == 'auto':
-            add_summary = stack_msg.count('\n') > 50
+            if add_summary == 'auto':
+                add_summary = stack_msg.count('\n') > 50
 
-        if add_summary:
-            summ = format_summary(frameinfos, style=style, reverse=reverse, **kwargs)
-            summ += '\n'
-            msgs.append('---- (full traceback below) ----\n\n' if reverse else
-                        '---- (full traceback above) ----\n')
-            msgs.append(summ)
+            if add_summary:
+                summ = format_summary(frameinfos, style=style, reverse=reverse, **kwargs)
+                summ += '\n'
+                msgs.append('---- (full traceback below) ----\n\n' if reverse else
+                            '---- (full traceback above) ----\n')
+                msgs.append(summ)
 
         exc = format_exception_message(etype, evalue, style=style)
         msgs.append('\n\n' if reverse else '')
@@ -166,6 +167,9 @@ def format_exception_message(etype, evalue, tb=None, style='plaintext'):
     type_str = etype.__name__
     val_str = str(evalue)
 
+    if etype == SyntaxError:
+        val_str += '\n    %s\n   %s^' % (evalue.text.rstrip(), ' '*evalue.offset)
+
     if val_str:
         type_str += ": "
 
@@ -178,6 +182,7 @@ def format_exception_message(etype, evalue, tb=None, style='plaintext'):
         clr_msg = get_ansi_tpl(*sc.colors['exception_msg'])
 
         return clr_head % type_str + clr_msg % val_str
+
 
 def _walk_traceback(tb):
     """

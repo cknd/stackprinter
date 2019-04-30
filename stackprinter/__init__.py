@@ -299,9 +299,7 @@ def _is_exc_info(thing):
         return False
     a, b, c = thing
     return (isinstance(a, type) and BaseException in a.mro() and
-            isinstance(b, BaseException) and
-            isinstance(c, types.TracebackType))
-
+            isinstance(b, BaseException))
 
 def format_thread(thread, add_summary=False, **kwargs):
     try:
