@@ -53,7 +53,7 @@ TypeError: unsupported operand type(s) for +: 'int' and 'str'
 
 By default, it tries to be somewhat polite about screen space. (It only shows a few source lines and the function header, and only the variables in the visible code, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127) exactly how verbose things should be. It also attempts advanced stunts like "dot attribute lookups", "showing the shape of numpy arrays".
 
-The default output is plain text, which is good for log files. For some reason, there is also a color mode 🌈, enabled by passing `style='darkbg'` or `style='lightbg'` to any of the methods below (or `'darkbg2'` or `'lightbg2'`). It's an attempt at [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), i.e. the colors follow the different variables instead of the syntax, like so:
+The default output is plain text, which is good for log files. For some reason, there is also a color mode 🌈, enabled by passing `style='darkbg'` or `style='lightbg'` to any of the methods below (or `'darkbg2'`, `'darkbg3'`, `'lightbg2'`, `'lightbg3'` ). It's an attempt at [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), i.e. the colors follow the different variables instead of the syntax, like so:
 
 <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/darkbg.png" width="400">   <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/notebook.png" width="400">
 
@@ -157,13 +157,13 @@ as we want to inspect some thread's call stack (...or is there?)
 
 More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all calls & returns 'live' as they are happening. Slows everything down though, of course.
 ```python
-with stackprinter.TracePrinter(style='darkbg'):
+with stackprinter.TracePrinter(style='darkbg2'):
     dosomething()
 ```
 
 or
 ```python
-tp = stackprinter.TracePrinter(style='darkbg')
+tp = stackprinter.TracePrinter(style='darkbg2')
 tp.enable()
 dosomething()
 # (...) +1 million lines

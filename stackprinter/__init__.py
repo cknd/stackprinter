@@ -82,10 +82,10 @@ def format(thing=None, **kwargs):
     style: string
         'plaintext' (default): Output just text
 
-        'color', 'darkbg', 'lightbg', 'darkbg2', 'lightbg2':
+        'darkbg', 'darkbg2', 'darkbg3', 'lightbg', 'lightbg2', 'lightbg3':
             Output ANSI-colors, for use with terminals that support 256
-            colors, notebooks or something like the `ansi2html` package,
-            to create colorful log files.
+            colors or notebooks (or something like the `ansi2html` package,
+            to create colorful log files)
 
     source_lines: int or 'all'
         Select how much source code context will be shown.
