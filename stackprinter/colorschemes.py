@@ -52,11 +52,14 @@ class darkbg2(ColorScheme):
                               # Hue, Sat, Val, Bold
     colors = {'exception_type': (0., 1., 0.8, True),
               'exception_msg':  (0., 1., 0.8, True),
+
               'highlight':      (0., 0., 1., True),
-              'header':         (0, 0, 0.6, True),
+              'header':         (0, 0, 0.6, False),
+
               'lineno':         (0, 0, 0.2, True),
               'arrow_lineno':   (0, 0, 0.8, True),
               'dots':           (0, 0, 0.4, False),
+
               'source_bold':    (0.,0.,0.8, True),
               'source_default': (0.,0.,0.8, False),
               'source_comment': (0.,0.,0.2, False),
@@ -122,7 +125,7 @@ class lightbg(ColorScheme):
               'exception_msg':  (0.0, 1., 0.6, True),
 
               'highlight':      (0.0, 0, 0., True),
-              'header':         (0, 0, 0.2, True),
+              'header':         (0, 0, 0.2, False),
 
               'lineno':         (0, 0, 0.8, True),
               'arrow_lineno':   (0, 0, 0.3, True),
@@ -158,7 +161,7 @@ class lightbg2(ColorScheme):
               'exception_msg':  (0.0, 1., 0.6, True),
 
               'highlight':      (0.0, 0, 0., True),
-              'header':         (0, 0, 0.2, True),
+              'header':         (0, 0, 0.1, False),
 
               'lineno':         (0, 0, 0.5, True),
               'arrow_lineno':   (0, 0, 0.1, True),
