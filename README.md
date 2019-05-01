@@ -99,11 +99,13 @@ except ValueError as e:
 # later:
 for err in errors:
     message = stackprinter.format(err)
-    logging.log(message)
+    logger.log(message)
 ```
 You can blacklist certain file paths, to make the stack less verbose whenever it runs through those files. For example, calling `show(exc, suppressed_paths=[r"lib/python.*/site-packages"])` shrinks calls within libraries to one line each.
 
 For more config etc, for now, [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127).
+
+For some ideas how to integrate this more directly with the `logging` module, see [`demo_logging.py`](https://github.com/cknd/stackprinter/blob/master/demo_logging.py) and [`demo_logging_hack.py`](https://github.com/cknd/stackprinter/blob/master/demo_logging_hack.py).
 
 ## Printing the stack of the current thread
 To see your own thread's current call stack, call `show` or `format` anywhere outside of exception handling.
