@@ -98,7 +98,7 @@ class FrameFormatter():
             The only difference between passing a frame or a traceback object is
             which line gets highlighted in the source listing: For a frame, it's
             the currently executed line; for a traceback, it's the line where an
-            error occured. (technically: `frame.f_lineno` vs. `tb.tb_lineno`)
+            error occurred. (technically: `frame.f_lineno` vs. `tb.tb_lineno`)
 
             The third option is interesting only if you're planning to format
             one frame multiple different ways: It is a little faster to format a
