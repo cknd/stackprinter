@@ -13,8 +13,7 @@ else:
     is_modern_numpy = LooseVersion(np.__version__) >= LooseVersion('1.14')
     # numpy's array2string method gained some new keywords after version 1.13
 
-MAXLEN_DICT_KEY_REPR = 25
-MAX_LIST_ENTRIES = 9000
+MAXLEN_DICT_KEY_REPR = 25  # truncate dict keys to this nr of characters
 
 # TODO see where the builtin pprint module can be used instead of all this
 # (but how to extend it for e.g. custom np array printing?)
@@ -109,11 +108,18 @@ def format_dict(value, truncation, max_depth, depth):
         val_str = '...'
     else:
         vstrs = []
+        char_count = 0
         for k, v in value.items():
+            if char_count >= truncation:
+                break
             kstr = truncate(repr(k), MAXLEN_DICT_KEY_REPR)
             vstr = format_value(v, indent=len(kstr) + 3,
                                 truncation=truncation, depth=depth+1)
-            vstrs.append("%s: %s" % (kstr, vstr))
+            istr = "%s: %s" % (kstr, vstr)
+            vstrs.append(istr)
+            char_count += len(istr)
+
+
         val_str = ',\n '.join(vstrs)
 
     return prefix + val_str + postfix
@@ -140,22 +146,25 @@ def format_iterable(value, truncation, max_depth, depth):
         val_str += '...'
     else:
         linebreak = False
-        i = 0
-        for v in value:
-            i += 1
-            if i > MAX_LIST_ENTRIES:
+        char_count = 0
+        for i,v in enumerate(value):
+            if char_count >= truncation:
+                val_str += "..."
                 break
+            item_str = ''
             entry = format_value(v, indent=1, truncation=truncation,
                                  depth=depth+1)
             sep = ', ' if i < length else ''
             if '\n' in entry:
-                val_str += "\n %s%s" % (entry, sep)
+                item_str += "\n %s%s" % (entry, sep)
                 linebreak = True
             else:
                 if linebreak:
-                    val_str += '\n'
+                    item_str += '\n'
                     linebreak = False
-                val_str += "%s%s" % (entry, sep)
+                item_str += "%s%s" % (entry, sep)
+            val_str += item_str
+            char_count += len(item_str)
 
     return prefix + val_str + postfix
 
@@ -184,12 +193,12 @@ def format_array(arr, minimize=False):
         msg = prefix = "array("
 
     suffix = ')'
-    
+
     if is_modern_numpy:
         array_rep = np.array2string(arr, max_line_width=9000, threshold=50,
                                     edgeitems=2, prefix=prefix, suffix=suffix)
     else:
-        array_rep = np.array2string(arr, max_line_width=9000, prefix=prefix)        
+        array_rep = np.array2string(arr, max_line_width=9000, prefix=prefix)
 
     if minimize and (len(array_rep) > 50 or arr.ndim > 1):
         array_rep = "%s%s...%s" % ('[' * arr.ndim, arr.flatten()[0], ']' * arr.ndim)
