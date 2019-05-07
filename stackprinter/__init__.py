@@ -274,16 +274,26 @@ def _patch_ipython_excepthook(**kwargs):
     if 'file' in kwargs:
         del kwargs['file']
 
-    def format_tb(*exc_tuple, **__):
-        unstructured_tb = format(exc_tuple, **kwargs)
-        structured_tb = [unstructured_tb]  # \*coughs*
-        return structured_tb
-
     import IPython
     shell = IPython.get_ipython()
-    if ipy_tb is None:
-        ipy_tb = shell.InteractiveTB.structured_traceback
-    shell.InteractiveTB.structured_traceback = format_tb
+
+    if shell:
+        def format_tb(*exc_tuple, **__):
+            unstructured_tb = format(exc_tuple, **kwargs)
+            structured_tb = [unstructured_tb]  # \*coughs*
+            return structured_tb
+
+        if ipy_tb is None:
+            ipy_tb = shell.InteractiveTB.structured_traceback
+
+        shell.InteractiveTB.structured_traceback = format_tb
+    else:
+        print('ouha')
+        def sptb(*_, **__):
+            show(**kwargs)
+
+        from IPython.core.interactiveshell import InteractiveShell
+        InteractiveShell.showtraceback = sptb
 
 
 def _unpatch_ipython_excepthook():
