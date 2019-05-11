@@ -1,11 +1,17 @@
-# More talkative crash logs
+<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/darkbg.png" width="500">
+
+# Better crash logs
 
 This prints tracebacks / call stacks with code context and the values of nearby variables. It answers most of the questions I'd ask an interactive debugger: Where in the code did it happen, what's in the relevant local variables, and why was _that_ function called with _those_ arguments.
 
-It's not a fully-grown [error monitoring system](https://sentry.io/welcome/), just a more helpful version of Python's built-in crash message. I sometimes use it locally instead of a debugger, but mostly it helps me sleep when my code runs somewhere where the only debug tool is a log file.
+Basically, it's a more helpful version of Python's built-in crash message. It will either print to the console or give you a string for logging.
 
 ```bash
 pip install stackprinter
+```
+```python
+import stackprinter
+stackprinter.set_excepthook()
 ```
 
 ### Before
@@ -50,12 +56,14 @@ File demo.py, line 4, in <lambda>
 
 TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
+I sometimes use it locally instead of a debugger, but mostly it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
 
-By default, it tries to be somewhat polite about screen space. (It only shows a few source lines and the function header, and only the variables in the visible code, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127) exactly how verbose things should be. It also attempts advanced stunts like "dot attribute lookups", "showing the shape of numpy arrays".
+By default, it tries to be somewhat polite about screen space (showing only a few source lines & the function header, and only the variables in those lines, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127) exactly how verbose things should be.
 
-The default output is plain text, which is good for log files. For some reason, there is also a color mode 🌈, enabled by passing `style='darkbg'` or `style='lightbg'` to any of the methods below (or `'darkbg2'`, `'darkbg3'`, `'lightbg2'`, `'lightbg3'` ). It's an attempt at [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), i.e. the colors follow the different variables instead of the syntax, like so:
+The default output is plain text, which is good when you're logging to a file. There's also a color mode 🌈, enabled by passing `style='darkbg'` or `style='lightbg'` (or `'darkbg2'`, `'darkbg3'`, `'lightbg2'`, `'lightbg3'`) to any of the functions below. (It's an attempt at [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), i.e. the colors follow the variables instead of the syntax.)
 
-<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/darkbg.png" width="400">   <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/notebook.png" width="400">
+<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/notebook.png" width="500">
+
 
 # Usage
 
@@ -67,26 +75,26 @@ import stackprinter
 stackprinter.set_excepthook(style='color')
 ```
 
-To see a specific exception, call [`show()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L154-L162) or [`format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137) inside an `except` block. `show()` prints to stderr by default, `format()` just returns a string, for custom logging.
+To see a specific exception, call [`show()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L154-L162) or [`format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137) inside an `except` block. `show()` prints to stderr by default, `format()` returns a string, for custom logging.
 
 
 ```python
 try:
     something()
 except:
-    # grab the current exception, print the traceback to stderr:
+    # print the current exception to stderr:
     stackprinter.show()
 
     # ...or only get a string, e.g. for logging:
     logger.error(stackprinter.format())
 ```
-You can also pass a previously caught exception object explicitly.
+You can also pass exceptions explicitly.
 ```python
 # or explicitly grab a particular exception
 try:
     something()
 except ValueError as e:
-    stackprinter.show(e)  # or format(e)
+    error_message = stackprinter.format(e)
 
 ```
 ```python
@@ -101,20 +109,19 @@ for err in errors:
     message = stackprinter.format(err)
     logger.log(message)
 ```
-You can blacklist certain file paths, to make the stack less verbose whenever it runs through those files. For example, calling `show(exc, suppressed_paths=[r"lib/python.*/site-packages"])` shrinks calls within libraries to one line each.
-
-For more config etc, for now, [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127).
 
 For some ideas how to integrate this more directly with the `logging` module, see [`demo_logging.py`](https://github.com/cknd/stackprinter/blob/master/demo_logging.py) and [`demo_logging_hack.py`](https://github.com/cknd/stackprinter/blob/master/demo_logging_hack.py).
 
-## Printing the stack of the current thread
+For more config etc, for now, [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127).
+
+## Printing the current call stack
 To see your own thread's current call stack, call `show` or `format` anywhere outside of exception handling.
 
 ```python
 stackprinter.show() # or format()
 ```
 
-## Printing the current stack of another thread
+## Printing the stack of another thread
 To inspect the call stack of any other running thread:
 
 ```python
@@ -124,6 +131,24 @@ thread.start()
 stackprinter.show(thread) # or format(thread)
 ```
 
+## Tracing a piece of code
+
+More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all calls & returns 'live' as they are happening. Slows everything down though, of course.
+```python
+with stackprinter.TracePrinter(style='darkbg2'):
+    dosomething()
+```
+
+or
+```python
+tp = stackprinter.TracePrinter(style='darkbg2')
+tp.enable()
+dosomething()
+# (...) +1 million lines
+tp.disable()
+```
+<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/trace.png" width="300">
+
 ## Making it stick
 
 To permanently replace the crash message for your python installation, you *could* put a file `sitecustomize.py` into the `site-packages` directory under one of the paths revealed by `python -c "import site; print(site.PREFIXES)"`, with contents like this:
@@ -131,10 +156,10 @@ To permanently replace the crash message for your python installation, you *coul
 ```python
     # in e.g. some_virtualenv/lib/python3.x/site-packages/sitecustomize.py:
     import stackprinter
-    stackprinter.set_excepthook(style='darkbg')
+    stackprinter.set_excepthook(style='darkbg2')
 ```
 
-That will give you colorful tracebacks automatically every time, even in the REPL.
+That would give you colorful tracebacks automatically every time, even in the REPL.
 
 (You could do a similar thing for IPython, [but they have their own method](https://ipython.readthedocs.io/en/stable/interactive/tutorial.html?highlight=startup#configuration), where the file goes into `~/.ipython/profile_default/startup` instead, and also I don't want to talk about what this module does to set an excepthook under IPython.)
 
@@ -154,25 +179,6 @@ the stack & printing them. So, if nothing seems to make sense, consider that
 your exception and the traceback messages are from slightly different times.
 Sadly, there is no responsible way to freeze all other threads as soon
 as we want to inspect some thread's call stack (...or is there?)
-
-## Tracing a piece of code as it is executed
-
-More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all calls & returns 'live' as they are happening. Slows everything down though, of course.
-```python
-with stackprinter.TracePrinter(style='darkbg2'):
-    dosomething()
-```
-
-or
-```python
-tp = stackprinter.TracePrinter(style='darkbg2')
-tp.enable()
-dosomething()
-# (...) +1 million lines
-tp.disable()
-```
-<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/trace.png" width="300">
-
 
 # Docs
 
