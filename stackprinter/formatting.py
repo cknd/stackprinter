@@ -167,7 +167,7 @@ def format_exception_message(etype, evalue, tb=None, style='plaintext'):
     type_str = etype.__name__
     val_str = str(evalue)
 
-    if etype == SyntaxError:
+    if etype == SyntaxError and evalue.text:
         val_str += '\n    %s\n   %s^' % (evalue.text.rstrip(), ' '*evalue.offset)
 
     if val_str:
