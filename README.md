@@ -9,10 +9,6 @@ Basically, it's a more helpful version of Python's built-in crash message. It wi
 ```bash
 pip install stackprinter
 ```
-```python
-import stackprinter
-stackprinter.set_excepthook()
-```
 
 ### Before
 ```
@@ -56,27 +52,25 @@ File demo.py, line 4, in <lambda>
 
 TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
-I sometimes use it locally instead of a debugger, but mostly it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
-
 By default, it tries to be somewhat polite about screen space (showing only a few source lines & the function header, and only the variables in those lines, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127) exactly how verbose things should be.
 
-The default output is plain text, which is good when you're logging to a file. There's also a color mode 🌈, enabled by passing `style='darkbg'` or `style='lightbg'` (or `'darkbg2'`, `'darkbg3'`, `'lightbg2'`, `'lightbg3'`) to any of the functions below. (It's an attempt at [semantic highlighting](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df), i.e. the colors follow the variables instead of the syntax.)
+It outputs plain text by default, which is good for logging to text files. There's also a color mode for some reason 🌈, which you can activate by a `style` keyword in any of the functions below. (The colors [track different variables](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df) instead of the language syntax.)
+
+I sometimes use this locally instead of a debugger, but mostly it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
 
 <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/notebook.png" width="500">
-
 
 # Usage
 
 ## Exception logging
-To globally replace the default python crash message, call `set_excepthook()` somewhere. This will print any uncaught exception to stderr by default. You could also [make this permanent for your python installation](#making-it-stick).
+To replace the default python crash printout, call `set_excepthook()` somewhere. This will print detailed stacktraces for any uncaught exception (to stderr, by default). You could also [make this permanent for your python installation](#making-it-stick).
 
 ```python
 import stackprinter
-stackprinter.set_excepthook(style='color')
+stackprinter.set_excepthook(style='darkbg2')
 ```
 
-To see a specific exception, call [`show()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L154-L162) or [`format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137) inside an `except` block. `show()` prints to stderr by default, `format()` returns a string, for custom logging.
-
+For more control, call [`show()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L154-L162) or [`format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137) inside an `except` block. `show()` prints to stderr by default, `format()` returns a string, for custom logging.
 
 ```python
 try:
@@ -85,34 +79,30 @@ except:
     # print the current exception to stderr:
     stackprinter.show()
 
-    # ...or only get a string, e.g. for logging:
+    # ...or instead, get a string for logging:
     logger.error(stackprinter.format())
 ```
-You can also pass exceptions explicitly.
+Or pass specific exceptions explicitly:
 ```python
-# or explicitly grab a particular exception
 try:
     something()
-except ValueError as e:
-    error_message = stackprinter.format(e)
+except RuntimeError as exc:
+    tb = stackprinter.format(exc)
+    logger.error('The front fell off.\n' + tb)
+```
+
+For all the config options, for now, [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127).
+
+It's also possible to integrate this neatly with standard logging calls [through a bit of extra plumbing](https://github.com/cknd/stackprinter/blob/master/demo_logging.py).
 
 ```
-```python
-# or collect exceptions in a little jar somewhere, to log them later
+configure_logging() # adds a custom log formatter, see link above
+# (...)
 try:
     something()
-except ValueError as e:
-    errors.append(e)
-
-# later:
-for err in errors:
-    message = stackprinter.format(err)
-    logger.log(message)
+except RuntimeError as e:
+    logger.exception('The front fell off.')
 ```
-
-For some ideas how to integrate this more directly with the `logging` module, see [`demo_logging.py`](https://github.com/cknd/stackprinter/blob/master/demo_logging.py) and [`demo_logging_hack.py`](https://github.com/cknd/stackprinter/blob/master/demo_logging_hack.py).
-
-For more config etc, for now, [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127).
 
 ## Printing the current call stack
 To see your own thread's current call stack, call `show` or `format` anywhere outside of exception handling.
