@@ -124,7 +124,44 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
 
     keyword args like stackprinter.format()
     """
+    msg = ''
     try:
+        # First, recursively format any chained exceptions (exceptions during whose handling
+        # the given one happened).
+        # TODO: refactor this whole messy function to return a more... structured datastructure
+        # before assembling a string, so that e.g. a summary of the whole chain can be shown at
+        # the end.
+        context = getattr(evalue, '__context__', None)
+        cause = getattr(evalue, '__cause__', None)
+        suppress_context = getattr(evalue, '__suppress_context__', False)
+        if cause:
+            chained_exc = cause
+            chain_hint = ("\n\nThe above exception was the direct cause "
+                          "of the following exception:\n\n")
+        elif context and not suppress_context:
+            chained_exc = context
+            chain_hint = ("\n\nWhile handling the above exception, "
+                          "another exception occurred:\n\n")
+        else:
+            chained_exc = None
+
+        if chained_exc:
+            msg += format_exc_info(chained_exc.__class__,
+                                   chained_exc,
+                                   chained_exc.__traceback__,
+                                   style=style,
+                                   add_summary=add_summary,
+                                   reverse=reverse,
+                                   **kwargs)
+
+            if style == 'plaintext':
+                msg +=  chain_hint
+            else:
+                sc = getattr(colorschemes, style)
+                clr = get_ansi_tpl(*sc.colors['exception_type'])
+                msg += clr % chain_hint
+
+        # Now, actually do some formatting:
         msgs = []
         if tb:
             frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
@@ -148,7 +185,7 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
         if reverse:
             msgs = reversed(msgs)
 
-        msg = ''.join(msgs)
+        msg += ''.join(msgs)
 
     except Exception as exc:
         our_tb = traceback.format_exception(exc.__class__,
