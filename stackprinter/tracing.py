@@ -146,7 +146,7 @@ class TracePrinter():
             return
 
         filepath = inspect.getsourcefile(frame) or inspect.getfile(frame)
-        if match(filepath, __file__):
+        if filepath in __file__:
             return
         elif match(filepath, self.suppressed_paths):
             line_info = (filepath, frame.f_lineno, frame.f_code.co_name)
