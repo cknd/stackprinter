@@ -116,15 +116,22 @@ class FrameFormatter():
             raise ValueError("Expected one of these types: "
                              "%s. Got %r" % (accepted_types, frame))
 
-        if isinstance(frame, ex.FrameInfo):
-            finfo = frame
-        else:
-            finfo = ex.get_info(frame, lineno)
+        try:
+            if isinstance(frame, ex.FrameInfo):
+                finfo = frame
+            else:
+                finfo = ex.get_info(frame, lineno)
 
-        msg = self._format_frame(finfo, self.lines, self.lines_after, self.show_vals,
-                                 self.show_signature, self.truncate_vals,
-                                 self.suppressed_paths)
-        return msg
+            return self._format_frame(finfo, self.lines, self.lines_after, self.show_vals,
+                                      self.show_signature, self.truncate_vals,
+                                      self.suppressed_paths)
+        except Exception as exc:
+            if isinstance(frame, ex.FrameInfo):
+                exc.where = [finfo.filename, finfo.function, finfo.lineno]
+            else:
+                exc.where = frame
+            raise
+
 
     def _format_frame(self, fi, lines, lines_after, show_vals,
                       show_signature, truncate_vals, suppressed_paths):
@@ -215,6 +222,12 @@ def select_scope(fi, lines, lines_after, show_vals, show_signature,
             source_lines = sorted(set(source_lines) | set(fi.head_lns))
 
     if source_lines:
+        # Report a bit more info about a weird class of bug
+        # that I can't reproduce locally.
+        if not set(source_lines).issubset(fi.source_map.keys()):
+            debug_vals = [source_lines, fi.head_lns, fi.source_map.keys()]
+            info = ', '.join(str(p) for p in debug_vals)
+            raise Exception("Picked an invalid source context: %s" % info)
         trimmed_source_map = trim_source(fi.source_map, source_lines)
     else:
         trimmed_source_map = {}
