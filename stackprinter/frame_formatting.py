@@ -12,7 +12,7 @@ from stackprinter.utils import inspect_callable, match, trim_source, get_ansi_tp
 class FrameFormatter():
     headline_tpl = "File %s, line %s, in %s\n"
     sourceline_tpl = "    %-3s  %s"
-    single_sourceline_tpl = "   %s"
+    single_sourceline_tpl = "    %s"
     marked_sourceline_tpl = "--> %-3s  %s"
     elipsis_tpl = " (...)\n"
     var_indent = 5
