@@ -54,7 +54,7 @@ TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
 By default, it tries to be somewhat polite about screen space (showing only a few source lines & the function header, and only the variables in those lines, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127) exactly how verbose things should be.
 
-It outputs plain text by default, which is good for logging to text files. There's also a color mode for some reason 🌈, which you can activate by a `style` keyword in any of the functions below. (The colors [track different variables](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df) instead of the language syntax.)
+It outputs plain text by default, which is good for logging to text files. There's also a color mode for some reason 🌈, with a few different color schemes for light and dark backgrounds. (The colors [track different variables](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df) instead of the language syntax.)
 
 I sometimes use this locally instead of a debugger, but mostly it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
 
@@ -67,7 +67,7 @@ To replace the default python crash printout, call `set_excepthook()` somewhere.
 
 ```python
 import stackprinter
-stackprinter.set_excepthook(style='darkbg2')
+stackprinter.set_excepthook(style='darkbg2')  # for jupyter notebooks try style='lightbg'
 ```
 
 For more control, call [`show()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L154-L162) or [`format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137) inside an `except` block. `show()` prints to stderr by default, `format()` returns a string, for custom logging.

@@ -83,9 +83,8 @@ def format(thing=None, **kwargs):
         'plaintext' (default): Output just text
 
         'darkbg', 'darkbg2', 'darkbg3', 'lightbg', 'lightbg2', 'lightbg3':
-            Output ANSI-colors, for use with terminals that support 256
-            colors or notebooks (or something like the `ansi2html` package,
-            to create colorful log files)
+            Enable colors, for use in terminals that support 256 ansi
+            colors or in jupyter notebooks (or even with `ansi2html`)
 
     source_lines: int or 'all'
         Select how much source code context will be shown.
@@ -215,15 +214,19 @@ def set_excepthook(**kwargs):
     """
     Set sys.excepthook to print a detailed traceback for any uncaught exception.
 
+    See `format()` for available kwargs.
+
     Examples:
+    ----
 
+    Print to stdout instead of stderr:
     ```
-    set_excepthook(file='stdout')    # print to stdout instead of stderr
+    set_excepthook(file='stdout')
+    ```
 
+    Enable color output:
     ```
-
-    ```
-    set_excepthook(style='darkbg')  # do ansi colors
+    set_excepthook(style='darkbg') # or e.g. 'lightbg' (for more options see `format`)
     ```
 
     If running under Ipython, this will, with a heavy heart, attempt to monkey
@@ -236,7 +239,7 @@ def set_excepthook(**kwargs):
     Params
     --
     **kwargs:
-        See `show`
+        See `show` and `format`
     """
     if _is_running_in_ipython():
         _patch_ipython_excepthook(**kwargs)
