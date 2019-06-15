@@ -188,11 +188,15 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
         msg += ''.join(msgs)
 
     except Exception as exc:
+        import os
+        if 'PY_STACKPRINTER_DEBUG' in os.environ:
+            raise
+
         our_tb = traceback.format_exception(exc.__class__,
                                             exc,
                                             exc.__traceback__,
                                             chain=False)
-        where = getattr(exc, 'where', None)
+        where = ', '.join(str(w) for w in getattr(exc, 'where', []))
         context = " while formatting " + str(where) if where else ''
         msg = 'Stackprinter failed%s:\n%s\n' % (context, ''.join(our_tb[-2:]))
         msg += 'So here is your original traceback at least:\n\n'
