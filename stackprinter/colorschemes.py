@@ -1,6 +1,9 @@
 import random
 
 
+__all__ = ['color', 'darkbg', 'darkbg2', 'darkbg3',
+           'lightbg', 'lightbg2', 'lightbg3']
+
 class ColorScheme():
 
     def __getitem__(self, name):
