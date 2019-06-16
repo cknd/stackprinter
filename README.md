@@ -1,10 +1,10 @@
 <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/darkbg.png" width="500">
 
-# Better crash logs
+[![Build Status](https://travis-ci.org/cknd/stackprinter.svg?branch=master)](https://travis-ci.org/cknd/stackprinter)
 
-This prints tracebacks / call stacks with code context and the values of nearby variables. It answers most of the questions I'd ask an interactive debugger: Where in the code did it happen, what's in the relevant local variables, and why was _that_ function called with _those_ arguments.
+# Better tracebacks
 
-Basically, it's a more helpful version of Python's built-in crash message. It will either print to the console or give you a string for logging.
+This is a more helpful version of Python's built-in exception message: It shows more code context and the current values of nearby variables. This answers many of the questions I'd ask an interactive debugger: Where in the code was the crash, what's in the relevant local variables, and why was _that_ function called with _those_ arguments. It either prints to the console or gives you a string for logging.
 
 ```bash
 pip install stackprinter
@@ -13,50 +13,55 @@ pip install stackprinter
 ### Before
 ```
 Traceback (most recent call last):
-  File "demo.py", line 10, in <module>
+  File "demo.py", line 12, in <module>
     dangerous_function(somelist + anotherlist)
-  File "demo.py", line 4, in dangerous_function
+  File "demo.py", line 6, in dangerous_function
     return sorted(blub, key=lambda xs: sum(xs))
-  File "demo.py", line 4, in <lambda>
+  File "demo.py", line 6, in <lambda>
     return sorted(blub, key=lambda xs: sum(xs))
 TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
 
 ### After
 ```
-File demo.py, line 10, in <module>
-    8         somelist = [[1,2], [3,4]]
-    9         anotherlist = [['5', 6]]
---> 10        dangerous_function(somelist + anotherlist)
-    11    except:
+File demo.py, line 12, in <module>
+    9        somelist = [[1,2], [3,4]]
+    10       anotherlist = [['5', 6]]
+    11       spam = numpy.zeros((3,3))
+--> 12       dangerous_function(somelist + anotherlist)
+    13   except:
     ..................................................
-     somelist = [[1, 2], [3, 4]]
-     anotherlist = [['5', 6]]
-    ..................................................
-
-File demo.py, line 4, in dangerous_function
-    3     def dangerous_function(blub):
---> 4         return sorted(blub, key=lambda xs: sum(xs))
-    ..................................................
-     blub = [[1, 2], [3, 4], ['5', 6]]
+     somelist = [[1, 2, ], [3, 4, ], ]
+     anotherlist = [['5', 6, ], ]
+     spam = 3x3 array([[0. 0. 0.]
+                       [0. 0. 0.]
+                       [0. 0. 0.]])
     ..................................................
 
-File demo.py, line 4, in <lambda>
-    2
-    3     def dangerous_function(blub):
---> 4         return sorted(blub, key=lambda xs: sum(xs))
-    5
+File demo.py, line 6, in dangerous_function
+    5    def dangerous_function(blub):
+--> 6        return sorted(blub, key=lambda xs: sum(xs))
     ..................................................
-     xs = ['5', 6]
+     blub = [[1, 2, ], [3, 4, ], ['5', 6, ], ]
+    ..................................................
+
+File demo.py, line 6, in <lambda>
+    3
+    4
+    5    def dangerous_function(blub):
+--> 6        return sorted(blub, key=lambda xs: sum(xs))
+    7
+    ..................................................
+     xs = ['5', 6, ]
     ..................................................
 
 TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
-By default, it tries to be somewhat polite about screen space (showing only a few source lines & the function header, and only the variables in those lines, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127) exactly how verbose things should be.
+By default, it tries to be somewhat polite about screen space (showing only a handful of source lines & the function header, and only the variables _in those lines_, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127) exactly how verbose things should be.
 
-It outputs plain text by default, which is good for logging to text files. There's also a color mode for some reason 🌈, with a few different color schemes for light and dark backgrounds. (The colors [track different variables](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df) instead of the language syntax.)
+It outputs plain text normally, which is good for log files. There's also a color mode for some reason 🌈, with a few different color schemes for light and dark backgrounds. (The colors [track different variables](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df) instead of the language syntax.)
 
-I sometimes use this locally instead of a debugger, but mostly it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
+I occasionally use this locally instead of a real debugger, but mostly it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
 
 <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/notebook.png" width="500">
 
@@ -95,12 +100,12 @@ For all the config options, for now, [see the docstring of `format()`](https://g
 
 It's also possible to integrate this neatly with standard logging calls [through a bit of extra plumbing](https://github.com/cknd/stackprinter/blob/master/demo_logging.py).
 
-```
+```python
 configure_logging() # adds a custom log formatter, see link above
-# (...)
+
 try:
     something()
-except RuntimeError as e:
+except:
     logger.exception('The front fell off.')
 ```
 
