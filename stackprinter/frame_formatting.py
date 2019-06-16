@@ -159,6 +159,7 @@ class FrameFormatter():
         return lines
 
     def _format_listing(self, lines, lineno):
+        raise Exception('gotcha!')
         ln_prev = None
         msg = ""
         n_lines = len(lines)
