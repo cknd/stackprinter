@@ -77,7 +77,7 @@ class TracePrinter():
     """
 
     def __init__(self,
-                 suppressed_paths=[],
+                 suppressed_paths=None,
                  depth_limit=20,
                  print_function=sys.stderr.write,
                  stop_on_exception=True,
@@ -86,7 +86,7 @@ class TracePrinter():
         self.fmt = get_formatter(**formatter_kwargs)
         self.fmt_style = formatter_kwargs.get('style', 'plaintext')
         assert isinstance(suppressed_paths, list)
-        self.suppressed_paths = suppressed_paths
+        self.suppressed_paths = [] if suppressed_paths is None else suppressed_paths
         self.emit = print_function
         self.depth_limit = depth_limit
         self.stop_on_exception = stop_on_exception
@@ -152,7 +152,7 @@ class TracePrinter():
             line_info = (filepath, frame.f_lineno, frame.f_code.co_name)
             frame_str = 'File %s, line %s, in %s\n' % line_info
             if len(note) > 123:
-                note == note[:120] + '...'
+                note = note[:120] + '...'
         else:
             frame_str = self.fmt(frame)
 

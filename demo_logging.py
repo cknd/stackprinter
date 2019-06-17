@@ -44,7 +44,7 @@ configure_logger(logger_name)
 logger = logging.getLogger(logger_name)
 
 def dangerous_function(blub):
-    return sorted(blub, key=lambda xs: sum(xs))
+    return sorted(blub, key=sum)
 
 try:
     somelist = [[1,2], [3,4]]
@@ -54,5 +54,3 @@ except:
     logger.exception('My hovercraft is full of eels.')
     # Or equivalently:
     # logger.error('My hovercraft is full of eels.', exc_info=True)
-
-

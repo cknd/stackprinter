@@ -7,10 +7,10 @@ __all__ = ['color', 'darkbg', 'darkbg2', 'darkbg3',
 class ColorScheme():
 
     def __getitem__(self, name):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_random(self):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class darkbg(ColorScheme):

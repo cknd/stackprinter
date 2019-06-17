@@ -39,7 +39,7 @@ patch_logging(style='darkbg')
 #### test:
 
 def dangerous_function(blub):
-    return sorted(blub, key=lambda xs: sum(xs))
+    return sorted(blub, key=sum)
 
 try:
     somelist = [[1,2], [3,4]]
@@ -47,5 +47,3 @@ try:
     dangerous_function(somelist + anotherlist)
 except:
     logger.exception('the front fell off.')
-
-

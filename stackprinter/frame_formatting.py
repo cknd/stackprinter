@@ -188,10 +188,9 @@ class FrameFormatter():
                                    truncation=truncation)
             assign_str = self.val_tpl % (name, val_str)
             msgs.append(assign_str)
-        if len(msgs) > 0:
+        if msgs:
             return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n\n'
-        else:
-            return ''
+        return ''
 
 
 def select_scope(fi, lines, lines_after, show_vals, show_signature,
@@ -352,10 +351,9 @@ class ColorfulFrameFormatter(FrameFormatter):
             hue, sat, val, bold = colormap.get(name, self.colors['var_invisible'])
             clr_str = get_ansi_tpl(hue, sat, val, bold) % assign_str
             msgs.append(clr_str)
-        if len(msgs) > 0:
+        if msgs:
             return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n\n'
-        else:
-            return ''
+        return ''
 
     def _pick_colors(self, source_map, name2lines, assignments, lineno):
         # TODO refactor: pick a hash for each name across frames, _then_ color.
@@ -384,7 +382,3 @@ class ColorfulFrameFormatter(FrameFormatter):
             raise ValueError('%r' % method)
 
         return self.colors.get_random(seed, highlight)
-
-
-
-

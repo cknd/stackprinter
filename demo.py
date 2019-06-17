@@ -3,7 +3,7 @@ import stackprinter
 
 
 def dangerous_function(blub):
-    return sorted(blub, key=lambda xs: sum(xs))
+    return sorted(blub, key=sum)
 
 try:
     somelist = [[1,2], [3,4]]
@@ -12,4 +12,3 @@ try:
     dangerous_function(somelist + anotherlist)
 except:
     stackprinter.show(style='plaintext', source_lines=4)
-
