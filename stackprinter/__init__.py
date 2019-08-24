@@ -142,7 +142,7 @@ def format(thing=None, **kwargs):
 
 
 @_guess_thing
-def show(thing=None, file=sys.stderr, **kwargs):
+def show(thing=None, file='stderr', **kwargs):
     """
     Print the traceback of an exception or a frame's call stack
 
