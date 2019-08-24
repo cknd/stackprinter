@@ -10,7 +10,7 @@ from stackprinter.prettyprinting import format_value
 from stackprinter.utils import inspect_callable, match, trim_source, get_ansi_tpl
 
 class FrameFormatter():
-    headline_tpl = "File %s, line %s, in %s\n"
+    headline_tpl = 'File "%s", line %s, in %s\n'
     sourceline_tpl = "    %-3s  %s"
     single_sourceline_tpl = "    %s"
     marked_sourceline_tpl = "--> %-3s  %s"
