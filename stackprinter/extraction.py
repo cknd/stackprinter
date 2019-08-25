@@ -70,7 +70,7 @@ def get_info(tb_or_frame, lineno=None):
         frame = tb_or_frame
         lineno = frame.f_lineno if lineno is None else lineno
     else:
-        raise ValueError('Cant inspect this: ' + repr(tb))
+        raise ValueError('Cant inspect this: ' + repr(tb_or_frame))
 
     filename = inspect.getsourcefile(frame) or inspect.getfile(frame)
     function = frame.f_code.co_name
