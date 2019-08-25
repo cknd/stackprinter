@@ -195,7 +195,7 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
                                             exc,
                                             exc.__traceback__,
                                             chain=False)
-        where = ', '.join(str(w) for w in getattr(exc, 'where', []))
+        where = getattr(exc, 'where', None)
         context = " while formatting " + str(where) if where else ''
         msg = 'Stackprinter failed%s:\n%s\n' % (context, ''.join(our_tb[-2:]))
         msg += 'So here is your original traceback at least:\n\n'
