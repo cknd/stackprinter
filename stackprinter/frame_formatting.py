@@ -122,9 +122,7 @@ class FrameFormatter():
             else:
                 finfo = ex.get_info(frame, lineno)
 
-            return self._format_frame(finfo, self.lines, self.lines_after, self.show_vals,
-                                      self.show_signature, self.truncate_vals,
-                                      self.suppressed_paths)
+            return self._format_frame(finfo)
         except Exception as exc:
             if isinstance(frame, ex.FrameInfo):
                 exc.where = [finfo.filename, finfo.function, finfo.lineno]
@@ -132,22 +130,17 @@ class FrameFormatter():
                 exc.where = frame
             raise
 
-
-    def _format_frame(self, fi, lines, lines_after, show_vals,
-                      show_signature, truncate_vals, suppressed_paths):
+    def _format_frame(self, fi):
         msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
 
-        source_map, assignments = select_scope(fi, lines, lines_after,
-                                               show_vals, show_signature,
-                                               suppressed_paths)
-
+        source_map, assignments = self.select_scope(fi)
 
         if source_map:
             source_lines = self._format_source(source_map)
             msg += self._format_listing(source_lines, fi.lineno)
         if assignments:
-            msg += self._format_assignments(assignments, truncate_vals)
-        elif lines == 'all' or lines > 1 or show_signature:
+            msg += self._format_assignments(assignments)
+        elif self.lines == 'all' or self.lines > 1 or self.show_signature:
             msg += '\n'
 
         return msg
@@ -180,12 +173,12 @@ class FrameFormatter():
         msg += self.sep_source_below
         return msg
 
-    def _format_assignments(self, assignments, truncation=500):
+    def _format_assignments(self, assignments):
         msgs = []
         for name, value in assignments.items():
             val_str = format_value(value,
                                    indent=len(name) + self.var_indent + 3,
-                                   truncation=truncation)
+                                   truncation=self.truncate_vals)
             assign_str = self.val_tpl % (name, val_str)
             msgs.append(assign_str)
         if len(msgs) > 0:
@@ -193,78 +186,74 @@ class FrameFormatter():
         else:
             return ''
 
+    def select_scope(self, fi):
+        """
+        decide which lines of code and which variables will be visible
+        """
+        source_lines = []
+        minl, maxl = 0, 0
+        if len(fi.source_map) > 0:
+            minl, maxl = min(fi.source_map), max(fi.source_map)
+            lineno = fi.lineno
 
-def select_scope(fi, lines, lines_after, show_vals, show_signature,
-                 suppressed_paths=None):
-    """
-    decide which lines of code and which variables will be visible
-    """
-    source_lines = []
-    minl, maxl = 0, 0
-    if len(fi.source_map) > 0:
-        minl, maxl = min(fi.source_map), max(fi.source_map)
-        lineno = fi.lineno
+            if self.lines == 0:
+                source_lines = []
+            elif self.lines == 1:
+                source_lines = [lineno]
+            elif self.lines == 'all':
+                source_lines = range(minl, maxl + 1)
+            elif self.lines > 1 or self.lines_after > 0:
+                start = max(lineno - (self.lines - 1), 0)
+                stop = lineno + self.lines_after
+                start = max(start, minl)
+                stop = min(stop, maxl)
+                source_lines = list(range(start, stop + 1))
 
-        if lines == 0:
-            source_lines = []
-        elif lines == 1:
-            source_lines = [lineno]
-        elif lines == 'all':
-            source_lines = range(minl, maxl+1)
-        elif lines > 1 or lines_after > 0:
-            start = max(lineno - (lines - 1), 0)
-            stop = lineno + lines_after
-            start = max(start, minl)
-            stop = min(stop, maxl)
-            source_lines = list(range(start, stop+1))
+            if source_lines and self.show_signature:
+                source_lines = sorted(set(source_lines) | set(fi.head_lns))
 
-        if source_lines and show_signature:
-            source_lines = sorted(set(source_lines) | set(fi.head_lns))
+        if source_lines:
+            # Report a bit more info about a weird class of bug
+            # that I can't reproduce locally.
+            if not set(source_lines).issubset(fi.source_map.keys()):
+                debug_vals = [source_lines, fi.head_lns, fi.source_map.keys()]
+                info = ', '.join(str(p) for p in debug_vals)
+                raise Exception("Picked an invalid source context: %s" % info)
+            trimmed_source_map = trim_source(fi.source_map, source_lines)
+        else:
+            trimmed_source_map = {}
 
-    if source_lines:
-        # Report a bit more info about a weird class of bug
-        # that I can't reproduce locally.
-        if not set(source_lines).issubset(fi.source_map.keys()):
-            debug_vals = [source_lines, fi.head_lns, fi.source_map.keys()]
-            info = ', '.join(str(p) for p in debug_vals)
-            raise Exception("Picked an invalid source context: %s" % info)
-        trimmed_source_map = trim_source(fi.source_map, source_lines)
-    else:
-        trimmed_source_map = {}
+        if self.show_vals:
+            if self.show_vals == 'all':
+                val_lines = range(minl, maxl)
+            elif self.show_vals == 'like_source':
+                val_lines = source_lines
+            elif self.show_vals == 'line':
+                val_lines = [lineno] if source_lines else []
 
-    if show_vals:
-        if show_vals == 'all':
-            val_lines = range(minl, maxl)
-        elif show_vals == 'like_source':
-            val_lines = source_lines
-        elif show_vals == 'line':
-            val_lines = [lineno] if source_lines else []
+            # TODO refactor the whole blacklistling mechanism below:
 
-        # TODO refactor the whole blacklistling mechanism below:
+            def hide(name):
+                value = fi.assignments[name]
+                if callable(value):
+                    qualified_name, path, *_ = inspect_callable(value)
+                    is_builtin = value.__class__.__name__ == 'builtin_function_or_method'
+                    is_boring = is_builtin or (qualified_name == name)
+                    is_suppressed = match(path, self.suppressed_paths)
+                    return is_boring or is_suppressed
+                return False
 
-        def hide(name):
-            value = fi.assignments[name]
-            if callable(value):
-                qualified_name, path, *_ = inspect_callable(value)
-                is_builtin = value.__class__.__name__ == 'builtin_function_or_method'
-                is_boring = is_builtin or (qualified_name == name)
-                is_suppressed = match(path, suppressed_paths)
-                return is_boring or is_suppressed
-            return False
+            visible_vars = (name for ln in val_lines
+                            for name in fi.line2names[ln]
+                            if name in fi.assignments)
 
-
-        visible_vars = (name for ln in val_lines
-                                for name in fi.line2names[ln]
-                                    if name in fi.assignments)
-
-        visible_assignments = OrderedDict([(n, fi.assignments[n])
-                                           for n in visible_vars
+            visible_assignments = OrderedDict([(n, fi.assignments[n])
+                                               for n in visible_vars
                                                if not hide(n)])
-    else:
-        visible_assignments = {}
+        else:
+            visible_assignments = {}
 
-
-    return trimmed_source_map, visible_assignments
+        return trimmed_source_map, visible_assignments
 
 
 class ColorfulFrameFormatter(FrameFormatter):
@@ -292,14 +281,11 @@ class ColorfulFrameFormatter(FrameFormatter):
     def tpl(self, name):
         return get_ansi_tpl(*self.colors[name])
 
-    def _format_frame(self, fi, lines, lines_after, show_vals,
-                      show_signature, truncation, suppressed_paths):
+    def _format_frame(self, fi):
         basepath, filename = os.path.split(fi.filename)
         sep = os.sep if basepath else ''
         msg = self.headline_tpl % (basepath, sep, filename, fi.lineno, fi.function)
-        source_map, assignments = select_scope(fi, lines, lines_after,
-                                               show_vals, show_signature,
-                                               suppressed_paths)
+        source_map, assignments = self.select_scope(fi)
 
         colormap = self._pick_colors(source_map, fi.name2lines, assignments, fi.lineno)
 
@@ -308,8 +294,8 @@ class ColorfulFrameFormatter(FrameFormatter):
             msg += self._format_listing(source_lines, fi.lineno)
 
         if assignments:
-            msg += self._format_assignments(assignments, colormap, truncation)
-        elif lines == 'all' or lines > 1 or show_signature:
+            msg += self._format_assignments(assignments, colormap)
+        elif self.lines == 'all' or self.lines > 1 or self.show_signature:
             msg += '\n'
 
         return msg
@@ -342,12 +328,12 @@ class ColorfulFrameFormatter(FrameFormatter):
 
         return source_lines
 
-    def _format_assignments(self, assignments, colormap, truncation=500):
+    def _format_assignments(self, assignments, colormap):
         msgs = []
         for name, value in assignments.items():
             val_str = format_value(value,
                                    indent=len(name) + self.var_indent + 3,
-                                   truncation=truncation)
+                                   truncation=self.truncate_vals)
             assign_str = self.val_tpl % (name, val_str)
             hue, sat, val, bold = colormap.get(name, self.colors['var_invisible'])
             clr_str = get_ansi_tpl(hue, sat, val, bold) % assign_str
