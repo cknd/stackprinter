@@ -281,7 +281,7 @@ class ColorfulFrameFormatter(FrameFormatter):
         dots = self.tpl('dots')
         lineno = self.tpl('lineno')
 
-        self.headline_tpl = header % "File %s%s" + highlight % "%s" + header % ", line %s, in %s\n"
+        self.headline_tpl = header % 'File "%s%s' + highlight % '%s' + header % '", line %s, in %s\n'
         self.sourceline_tpl = lineno % super().sourceline_tpl
         self.marked_sourceline_tpl = arrow_lineno % super().marked_sourceline_tpl
         self.elipsis_tpl = dots % super().elipsis_tpl
