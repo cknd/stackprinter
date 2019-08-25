@@ -3,11 +3,18 @@ import inspect
 from collections import OrderedDict, namedtuple
 from stackprinter.source_inspection import annotate
 
-FrameInfo = namedtuple('FrameInfo',
-                       ['filename', 'function', 'lineno', 'source_map',
-                        'head_lns', 'line2names', 'name2lines', 'assignments'])
-
 NON_FUNCTION_SCOPES =  ['<module>', '<lambda>', '<listcomp>']
+
+_FrameInfo = namedtuple('_FrameInfo',
+                        ['filename', 'function', 'lineno', 'source_map',
+                         'head_lns', 'line2names', 'name2lines', 'assignments'])
+
+class FrameInfo(_FrameInfo):
+    # give this namedtuple type a friendlier string representation
+    def __str__(self):
+        return ("<FrameInfo %s, line %s, scope %s>" %
+                (self.filename, self.lineno, self.function))
+
 
 def get_info(tb_or_frame, lineno=None):
     """
@@ -61,7 +68,6 @@ def get_info(tb_or_frame, lineno=None):
             so maybe just do that & let formatting decide which parts to show?)
             (TODO: Support []-lookups just like . lookups)
     """
-
     if isinstance(tb_or_frame, types.TracebackType):
         tb = tb_or_frame
         lineno = tb.tb_lineno if lineno is None else lineno

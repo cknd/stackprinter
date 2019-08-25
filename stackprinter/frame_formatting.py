@@ -124,10 +124,9 @@ class FrameFormatter():
 
             return self._format_frame(finfo)
         except Exception as exc:
-            if isinstance(frame, ex.FrameInfo):
-                exc.where = [finfo.filename, finfo.function, finfo.lineno]
-            else:
-                exc.where = frame
+            # If we crash, annotate the exception with the thing
+            # we were trying to format, for debug/logging purposes.
+            exc.where = frame
             raise
 
     def _format_frame(self, fi):
