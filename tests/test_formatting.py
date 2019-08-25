@@ -6,7 +6,7 @@ def test_frame_formatting():
     msg = stackprinter.format()
     lines = msg.split('\n')
 
-    expected = ['File test_formatting.py, line 6, in test_frame_formatting',
+    expected = ['File "test_formatting.py", line 6, in test_frame_formatting',
                 '    4    def test_frame_formatting():',
                 '    5        """ pin plaintext output """',
                 '--> 6        msg = stackprinter.format()',
