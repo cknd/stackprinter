@@ -68,6 +68,10 @@ def get_info(tb_or_frame, lineno=None):
             so maybe just do that & let formatting decide which parts to show?)
             (TODO: Support []-lookups just like . lookups)
     """
+
+    if isinstance(tb_or_frame, FrameInfo):
+        return tb_or_frame
+
     if isinstance(tb_or_frame, types.TracebackType):
         tb = tb_or_frame
         lineno = tb.tb_lineno if lineno is None else lineno

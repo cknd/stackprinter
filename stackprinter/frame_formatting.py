@@ -117,10 +117,7 @@ class FrameFormatter():
                              "%s. Got %r" % (accepted_types, frame))
 
         try:
-            if isinstance(frame, ex.FrameInfo):
-                finfo = frame
-            else:
-                finfo = ex.get_info(frame, lineno)
+            finfo = ex.get_info(frame, lineno)
 
             return self._format_frame(finfo)
         except Exception as exc:
