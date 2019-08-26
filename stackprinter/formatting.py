@@ -17,16 +17,6 @@ def get_formatter(style, **kwargs):
         return ColorfulFrameFormatter(style, **kwargs)
 
 
-def inspect_frames(frames):
-    for fi in frames:
-        if isinstance(fi, ex.FrameInfo):
-            yield fi
-        elif isinstance(fi, types.FrameType):
-            yield ex.get_info(fi)
-        else:
-            raise ValueError("Expected a frame or a FrameInfo tuple, got %r" % fi)
-
-
 def format_summary(frames, style='plaintext', source_lines=1, reverse=False,
                    **kwargs):
     """
@@ -40,7 +30,7 @@ def format_summary(frames, style='plaintext', source_lines=1, reverse=False,
                                       show_signature=False,
                                       show_vals=False)
 
-    frame_msgs = [minimal_formatter(fi) for fi in inspect_frames(frames)]
+    frame_msgs = [minimal_formatter(frame) for frame in frames]
     if reverse:
         frame_msgs = reversed(frame_msgs)
 
@@ -80,7 +70,8 @@ def format_stack(frames, style='plaintext', source_lines=5,
 
     frame_msgs = []
     parent_is_boring = True
-    for fi in inspect_frames(frames):
+    for frame in frames:
+        fi = ex.get_info(frame)
         is_boring = match(fi.filename, suppressed_paths)
         if is_boring:
             if parent_is_boring:
@@ -109,7 +100,7 @@ def format_stack_from_frame(fr, add_summary=False, **kwargs):
     """
     stack = []
     while fr is not None:
-        stack.append(ex.get_info(fr))
+        stack.append(fr)
         fr = fr.f_back
     stack = reversed(stack)
 
