@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 
 def spam(thing,
@@ -73,14 +72,6 @@ def spam_spam_spam(val):
                 random.rand(*bla.T.\
                         T.T)
         raise Exception('something happened')
-
-####
-
-@pytest.fixture
-def sourcelines():
-    with open(__file__, 'r') as sf:
-        lines = sf.readlines()
-    return lines
 
 
 if __name__ == '__main__':

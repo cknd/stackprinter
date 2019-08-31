@@ -71,8 +71,7 @@ def format_stack(frames, style='plaintext', source_lines=5,
     frame_msgs = []
     parent_is_boring = True
     for frame in frames:
-        fi = ex.get_info(frame)
-        is_boring = match(fi.filename, suppressed_paths)
+        is_boring = match(frame.frame.f_code.co_filename, suppressed_paths)
         if is_boring:
             if parent_is_boring:
                 formatter = minimal_formatter
@@ -82,7 +81,7 @@ def format_stack(frames, style='plaintext', source_lines=5,
             formatter = verbose_formatter
 
         parent_is_boring = is_boring
-        frame_msgs.append(formatter(fi))
+        frame_msgs.append(formatter(frame))
 
     if reverse:
         frame_msgs = reversed(frame_msgs)

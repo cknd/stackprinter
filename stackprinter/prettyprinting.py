@@ -1,7 +1,6 @@
 import os
 import pprint
 
-from stackprinter.extraction import UnresolvedAttribute
 from stackprinter.utils import inspect_callable
 
 try:
@@ -49,14 +48,6 @@ def format_value(value, indent=0, truncation=None, wrap=60,
 
     if depth > max_depth:
         return '...'
-
-    if isinstance(value, UnresolvedAttribute):
-        reason = "# %s" % (value.exc_type)
-        val_tpl = reason + "\n%s = %s"
-        lastval_str = format_value(value.last_resolvable_value,
-                                   truncation=truncation, indent=3, depth=depth+1)
-        val_str = val_tpl % (value.last_resolvable_name, lastval_str)
-        indent = 10
 
     elif isinstance(value, (list, tuple, set)):
         val_str = format_iterable(value, truncation, max_depth, depth)
