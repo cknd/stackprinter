@@ -135,22 +135,25 @@ class FrameFormatter():
 
         # source_map, assignments = self.select_scope(fi)
 
+        variables = self.variables(fi)
         if 1:
             msg += self._format_listing(fi.lines)
-        if 1:
-            msg += self._format_assignments(fi.variables)
+
+        if variables:
+            msg += self._format_assignments(variables)
         elif self.lines == 'all' or self.lines > 1 or self.show_signature:
             msg += '\n'
 
         return msg
 
-    def _format_listing(self, lines, colormap=None):
+    def _format_listing(self, lines, colormap=None, variables=()):
         if colormap:
             bold_code = ansi_color(*self.colors['source_bold'])
             comment_code = ansi_color(*self.colors['source_comment'])
 
         msg = ""
         n_lines = len(lines)
+        variables = set(variables)
         for line in lines:
             if line is stack_data.LINE_GAP:
                 msg += self.elipsis_tpl
@@ -170,8 +173,14 @@ class FrameFormatter():
                     if typ == token_module.COMMENT:
                         return comment_code, ansi_reset
 
+                variable_ranges = [
+                    rang
+                    for rang in line.variable_ranges
+                    if rang.data[0] in variables
+                ]
+
                 markers = (
-                        stack_data.markers_from_ranges(line.variable_ranges, convert_variable_range) +
+                        stack_data.markers_from_ranges(variable_ranges, convert_variable_range) +
                         stack_data.markers_from_ranges(line.token_ranges, convert_token_range)
                 )
             else:
@@ -276,6 +285,45 @@ class FrameFormatter():
 
         return trimmed_source_map, visible_assignments
 
+    def variables(self, frame_info):
+        if not self.show_vals:
+            return []
+
+        if self.show_vals == 'all':
+            variables = frame_info.variables
+        elif self.show_vals == 'like_source':
+            variables = frame_info.variables_in_lines
+        elif self.show_vals == 'line':
+            variables = frame_info.variables_in_executing_piece
+        else:
+            raise ValueError("Unknown option " + self.show_vals)
+
+        variables = sorted(
+            [
+                variable
+                for variable in variables
+                if not self.hide_variable(variable.name, variable.value)
+            ],
+            key=lambda var: min(node.first_token.start for node in var.nodes)
+        )
+
+        return variables
+
+    def hide_variable(self, name, value):
+        if not callable(value):
+            return False
+
+        qualified_name, path, *_ = inspect_callable(value)
+
+        is_builtin = value.__class__.__name__ == 'builtin_function_or_method'
+        is_boring = is_builtin or qualified_name == name
+        if is_boring:
+            return True
+
+        is_suppressed = match(path, self.suppressed_paths)
+        if is_suppressed:
+            return True
+
 
 class ColorfulFrameFormatter(FrameFormatter):
 
@@ -310,11 +358,12 @@ class ColorfulFrameFormatter(FrameFormatter):
 
         colormap = self._pick_colors(fi.variables)
 
+        variables = self.variables(fi)
         if 1:
-            msg += self._format_listing(fi.lines, colormap)
+            msg += self._format_listing(fi.lines, colormap, variables)
 
-        if 1:
-            msg += self._format_assignments(fi.variables, colormap)
+        if variables:
+            msg += self._format_assignments(variables, colormap)
         elif self.lines == 'all' or self.lines > 1 or self.show_signature:
             msg += '\n'
 
