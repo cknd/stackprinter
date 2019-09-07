@@ -133,8 +133,6 @@ class FrameFormatter():
     def _format_frame(self, fi):
         msg = self.headline_tpl % (fi.code.co_filename, fi.lineno, fi.executing.code_qualname())
 
-        # source_map, assignments = self.select_scope(fi)
-
         variables = self.variables(fi)
         if 1:
             msg += self._format_listing(fi.lines)
@@ -216,75 +214,6 @@ class FrameFormatter():
         else:
             return ''
 
-    def select_scope(self, fi):
-        """
-        decide which lines of code and which variables will be visible
-        """
-        source_lines = []
-        minl, maxl = 0, 0
-        if len(fi.source_map) > 0:
-            minl, maxl = min(fi.source_map), max(fi.source_map)
-            lineno = fi.lineno
-
-            if self.lines == 0:
-                source_lines = []
-            elif self.lines == 1:
-                source_lines = [lineno]
-            elif self.lines == 'all':
-                source_lines = range(minl, maxl + 1)
-            elif self.lines > 1 or self.lines_after > 0:
-                start = max(lineno - (self.lines - 1), 0)
-                stop = lineno + self.lines_after
-                start = max(start, minl)
-                stop = min(stop, maxl)
-                source_lines = list(range(start, stop + 1))
-
-            if source_lines and self.show_signature:
-                source_lines = sorted(set(source_lines) | set(fi.head_lns))
-
-        if source_lines:
-            # Report a bit more info about a weird class of bug
-            # that I can't reproduce locally.
-            if not set(source_lines).issubset(fi.source_map.keys()):
-                debug_vals = [source_lines, fi.head_lns, fi.source_map.keys()]
-                info = ', '.join(str(p) for p in debug_vals)
-                raise Exception("Picked an invalid source context: %s" % info)
-            trimmed_source_map = trim_source(fi.source_map, source_lines)
-        else:
-            trimmed_source_map = {}
-
-        if self.show_vals:
-            if self.show_vals == 'all':
-                val_lines = range(minl, maxl)
-            elif self.show_vals == 'like_source':
-                val_lines = source_lines
-            elif self.show_vals == 'line':
-                val_lines = [lineno] if source_lines else []
-
-            # TODO refactor the whole blacklistling mechanism below:
-
-            def hide(name):
-                value = fi.assignments[name]
-                if callable(value):
-                    qualified_name, path, *_ = inspect_callable(value)
-                    is_builtin = value.__class__.__name__ == 'builtin_function_or_method'
-                    is_boring = is_builtin or (qualified_name == name)
-                    is_suppressed = match(path, self.suppressed_paths)
-                    return is_boring or is_suppressed
-                return False
-
-            visible_vars = (name for ln in val_lines
-                            for name in fi.line2names[ln]
-                            if name in fi.assignments)
-
-            visible_assignments = OrderedDict([(n, fi.assignments[n])
-                                               for n in visible_vars
-                                               if not hide(n)])
-        else:
-            visible_assignments = {}
-
-        return trimmed_source_map, visible_assignments
-
     def variables(self, frame_info):
         if not self.show_vals:
             return []
@@ -354,7 +283,6 @@ class ColorfulFrameFormatter(FrameFormatter):
         basepath, filename = os.path.split(fi.code.co_filename)
         sep = os.sep if basepath else ''
         msg = self.headline_tpl % (basepath, sep, filename, fi.lineno, fi.executing.code_qualname())
-        # source_map, assignments = self.select_scope(fi)
 
         colormap = self._pick_colors(fi.variables)
 
