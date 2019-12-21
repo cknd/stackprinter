@@ -108,7 +108,7 @@ def format_stack_from_frame(fr, add_summary=False, **kwargs):
 
 
 def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
-                    reverse=False, **kwargs):
+                    reverse=False, add_prior_calls=False, **kwargs):
     """
     Format an exception traceback, including the exception message
 
@@ -154,6 +154,17 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
         # Now, actually do some formatting:
         msgs = []
         if tb:
+            if add_prior_calls:
+                outer_frames = _get_outer_frames(tb)
+                if outer_frames:
+                    outer_infos = [ex.get_info(fr) for fr in outer_frames]
+                    outer_msg = format_stack(outer_infos, style=style, reverse=reverse, **kwargs)
+                    msgs.append(outer_msg)
+                    msgs.append(16*' ' + '↓ more prior calls ↓ \n\n' if reverse else
+                                16*' ' + '↑ more prior calls ↑ \n\n')
+            else:
+                outer_infos = []
+
             frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
             stack_msg = format_stack(frameinfos, style=style, reverse=reverse, **kwargs)
             msgs.append(stack_msg)
@@ -162,11 +173,19 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
                 add_summary = stack_msg.count('\n') > 50
 
             if add_summary:
+                msgs.append('---- Scroll down for full traceback. Summary above ---- \n\n' if reverse else
+                            "---- Scroll up for full traceback. Summary below: ---- \n")
+
+                if outer_infos:
+                    outer_summ = format_summary(outer_infos, style=style, reverse=reverse, **kwargs)
+                    msgs.append(outer_summ)
+                    msgs.append(16*' ' + '↓ more prior calls ↓\n' if reverse else
+                                16*' ' + '↑ more prior calls ↑\n')
+
                 summ = format_summary(frameinfos, style=style, reverse=reverse, **kwargs)
-                summ += '\n'
-                msgs.append('---- (full traceback below) ----\n\n' if reverse else
-                            '---- (full traceback above) ----\n')
-                msgs.append(summ)
+                msgs.append(summ + '\n')
+
+
 
         exc = format_exception_message(etype, evalue, style=style)
         msgs.append('\n\n' if reverse else '')
@@ -219,8 +238,17 @@ def format_exception_message(etype, evalue, tb=None, style='plaintext'):
 
 def _walk_traceback(tb):
     """
-    Follow a chain of traceback objects outwards
+    Follow a chain of traceback objects inwards
     """
     while tb:
         yield tb
         tb = tb.tb_next
+
+def _get_outer_frames(tb):
+    """ If traceback's top frame itself has caller frames, get them """
+    frames = []
+    frame = tb.tb_frame.f_back
+    while frame:
+        frames.append(frame)
+        frame = frame.f_back
+    return list(reversed(frames))

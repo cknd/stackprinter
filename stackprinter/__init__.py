@@ -25,7 +25,7 @@ def _guess_thing(f):
 
 
 @_guess_thing
-def format(thing=None, **kwargs):
+def format(thing=None, add_prior_calls=False, **kwargs):
     """
     Render the traceback of an exception or a frame's call stack
 
@@ -125,6 +125,13 @@ def format(thing=None, **kwargs):
         to the built-in traceback message.
         'auto' (default): do that if the main traceback is longer than 50 lines.
 
+    add_prior_calls: bool
+        If a traceback's top frame itself has parent frames, display
+        those as well. By default, Python tracebacks only show the frames
+        below the exception handling site (i.e. you only only see what
+        happened inside your try block, but you don't see which prior
+        calls have led to that block). This option adds such parent frames
+        to the printout.
     """
     if isinstance(thing, types.FrameType):
         return fmt.format_stack_from_frame(thing, **kwargs)
@@ -134,7 +141,7 @@ def format(thing=None, **kwargs):
         exc_info = (thing.__class__, thing, thing.__traceback__)
         return format(exc_info, **kwargs)
     elif _is_exc_info(thing):
-        return fmt.format_exc_info(*thing, **kwargs)
+        return fmt.format_exc_info(*thing, add_prior_calls=add_prior_calls, **kwargs)
     else:
         raise ValueError("Can't format %s. "\
                          "Expected an exception instance, sys.exc_info() tuple,"\
