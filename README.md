@@ -9,7 +9,7 @@ This is a more helpful version of Python's built-in exception message: It shows 
 ```bash
 pip install stackprinter
 ```
-
+[It's only for Python 3.](https://github.com/cknd/stackprinter/issues/2#issuecomment-487424967)
 ### Before
 ```
 Traceback (most recent call last):
