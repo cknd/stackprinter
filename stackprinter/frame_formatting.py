@@ -184,7 +184,7 @@ class FrameFormatter():
             else:
                 markers = []
 
-            text = line.render_with_markers(markers) + "\n"
+            text = line.render(markers) + "\n"
 
             if n_lines > 1:
                 if line.is_current:

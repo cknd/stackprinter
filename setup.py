@@ -5,6 +5,8 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     python_requires=">=3.4",
+    install_requires=["stack_data"],
+    test_requires=["pytest", "numpy"],
     name="stackprinter",
     version="0.2.3",
     author="cknd",
