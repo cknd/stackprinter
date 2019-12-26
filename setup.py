@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 test_requires = ["pytest", "numpy"]
 
 setuptools.setup(
-    python_requires=">=3.4",
+    python_requires=">=3.5",
     install_requires=["stack_data"],
     test_requires=test_requires,
     extras_require={
