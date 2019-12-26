@@ -3,10 +3,15 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+test_requires = ["pytest", "numpy"]
+
 setuptools.setup(
     python_requires=">=3.4",
     install_requires=["stack_data"],
-    test_requires=["pytest", "numpy"],
+    test_requires=test_requires,
+    extras_require={
+        'tests': test_requires,
+    },
     name="stackprinter",
     version="0.2.3",
     author="cknd",
