@@ -1,16 +1,15 @@
-import types
 import os
-
-from collections import OrderedDict
-from keyword import kwlist
 import token as token_module
+import types
+from keyword import kwlist
 
-import stackprinter.extraction as ex
-import stackprinter.colorschemes as colorschemes
-
-from stackprinter.prettyprinting import format_value
-from stackprinter.utils import inspect_callable, match, trim_source, get_ansi_tpl, ansi_color, ansi_reset
 import stack_data
+from asttokens.util import is_non_coding_token
+
+import stackprinter.colorschemes as colorschemes
+import stackprinter.extraction as ex
+from stackprinter.prettyprinting import format_value
+from stackprinter.utils import inspect_callable, match, get_ansi_tpl, ansi_color, ansi_reset
 
 
 class FrameFormatter():
@@ -168,7 +167,7 @@ class FrameFormatter():
                     if typ == token_module.OP or typ == token_module.NAME and r.data.string in kwlist:
                         return bold_code, ansi_reset
 
-                    if typ == token_module.COMMENT:
+                    if is_non_coding_token(typ):
                         return comment_code, ansi_reset
 
                 variable_ranges = [
