@@ -4,12 +4,11 @@
 
 # Better tracebacks
 
-This is a more helpful version of Python's built-in exception message: It shows more code context and the current values of nearby variables. This answers many of the questions I'd ask an interactive debugger: Where in the code was the crash, what's in the relevant local variables, and why was _that_ function called with _those_ arguments. It either prints to the console or gives you a string for logging.
+This is a more helpful version of Python's built-in exception message: It shows more code context and the current values of nearby variables. This answers many of the questions I'd ask an interactive debugger: Where in the code was the crash, what's in the relevant local variables, and why was _that_ function called with _those_ arguments. It either prints to the console or gives you a string for logging. [It's for Python 3.](https://github.com/cknd/stackprinter/issues/2#issuecomment-489458606)
 
 ```bash
 pip install stackprinter
 ```
-[It's only for Python 3.](https://github.com/cknd/stackprinter/issues/2#issuecomment-487424967)
 ### Before
 ```
 Traceback (most recent call last):
