@@ -1,19 +1,22 @@
-import types
 import os
+import token as token_module
+import types
+from keyword import kwlist
 
-from collections import OrderedDict
-import stackprinter.extraction as ex
-import stackprinter.source_inspection as sc
+import stack_data
+from asttokens.util import is_non_coding_token
+
 import stackprinter.colorschemes as colorschemes
-
+import stackprinter.extraction as ex
 from stackprinter.prettyprinting import format_value
-from stackprinter.utils import inspect_callable, match, trim_source, get_ansi_tpl
+from stackprinter.utils import inspect_callable, match, get_ansi_tpl, ansi_color, ansi_reset
+
 
 class FrameFormatter():
     headline_tpl = 'File "%s", line %s, in %s\n'
-    sourceline_tpl = "    %-3s  %s"
-    single_sourceline_tpl = "    %s"
-    marked_sourceline_tpl = "--> %-3s  %s"
+    sourceline_tpl = "    %-3s  "
+    single_sourceline_tpl = "    "
+    marked_sourceline_tpl = "--> %-3s  "
     elipsis_tpl = " (...)\n"
     var_indent = 5
     sep_vars = "%s%s" % ((' ') * 4, ('.' * 50))
@@ -117,7 +120,7 @@ class FrameFormatter():
                              "%s. Got %r" % (accepted_types, frame))
 
         try:
-            finfo = ex.get_info(frame, lineno)
+            finfo = ex.get_info(frame)
 
             return self._format_frame(finfo)
         except Exception as exc:
@@ -127,129 +130,127 @@ class FrameFormatter():
             raise
 
     def _format_frame(self, fi):
-        msg = self.headline_tpl % (fi.filename, fi.lineno, fi.function)
+        msg = self.headline_tpl % (fi.code.co_filename, fi.lineno, fi.executing.code_qualname())
 
-        source_map, assignments = self.select_scope(fi)
+        variables = self.variables(fi)
+        if 1:
+            msg += self._format_listing(fi.lines)
 
-        if source_map:
-            source_lines = self._format_source(source_map)
-            msg += self._format_listing(source_lines, fi.lineno)
-        if assignments:
-            msg += self._format_assignments(assignments)
+        if variables:
+            msg += self._format_assignments(variables)
         elif self.lines == 'all' or self.lines > 1 or self.show_signature:
             msg += '\n'
 
         return msg
 
-    def _format_source(self, source_map):
-        lines = OrderedDict()
-        for ln in sorted(source_map):
-            lines[ln] = ''.join(st for st, _, in source_map[ln])
-        return lines
+    def _format_listing(self, lines, colormap=None, variables=()):
+        if colormap:
+            bold_code = ansi_color(*self.colors['source_bold'])
+            comment_code = ansi_color(*self.colors['source_comment'])
 
-    def _format_listing(self, lines, lineno):
-        ln_prev = None
         msg = ""
         n_lines = len(lines)
-        for ln in sorted(lines):
-            line = lines[ln]
-            if ln_prev and ln_prev != ln - 1:
+        variables = set(variables)
+        for line in lines:
+            if line is stack_data.LINE_GAP:
                 msg += self.elipsis_tpl
-            ln_prev = ln
+                continue
+
+            if colormap:
+                def convert_variable_range(r):
+                    var = r.data[0]
+                    if var in colormap:
+                        return ansi_color(*colormap[var]), ansi_reset
+
+                def convert_token_range(r):
+                    typ = r.data.type
+                    if typ == token_module.OP or typ == token_module.NAME and r.data.string in kwlist:
+                        return bold_code, ansi_reset
+
+                    if is_non_coding_token(typ):
+                        return comment_code, ansi_reset
+
+                variable_ranges = [
+                    rang
+                    for rang in line.variable_ranges
+                    if rang.data[0] in variables
+                ]
+
+                markers = (
+                        stack_data.markers_from_ranges(variable_ranges, convert_variable_range) +
+                        stack_data.markers_from_ranges(line.token_ranges, convert_token_range)
+                )
+            else:
+                markers = []
+
+            text = line.render(markers) + "\n"
 
             if n_lines > 1:
-                if ln == lineno:
+                if line.is_current:
                     tpl = self.marked_sourceline_tpl
                 else:
                     tpl = self.sourceline_tpl
-                msg += tpl % (ln, line)
+                msg += tpl % line.lineno + text
             else:
-                msg += self.single_sourceline_tpl % line
+                msg += self.single_sourceline_tpl + text
 
         msg += self.sep_source_below
         return msg
 
-    def _format_assignments(self, assignments):
+    def _format_assignments(self, variables, colormap=None):
         msgs = []
-        for name, value in assignments.items():
-            val_str = format_value(value,
-                                   indent=len(name) + self.var_indent + 3,
+        for variable in variables:
+            val_str = format_value(variable.value,
+                                   indent=len(variable.name) + self.var_indent + 3,
                                    truncation=self.truncate_vals)
-            assign_str = self.val_tpl % (name, val_str)
+            assign_str = self.val_tpl % (variable.name, val_str)
+            if colormap:
+                hue, sat, val, bold = colormap.get(variable, self.colors['var_invisible'])
+                assign_str = get_ansi_tpl(hue, sat, val, bold) % assign_str
             msgs.append(assign_str)
         if len(msgs) > 0:
             return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n\n'
         else:
             return ''
 
-    def select_scope(self, fi):
-        """
-        decide which lines of code and which variables will be visible
-        """
-        source_lines = []
-        minl, maxl = 0, 0
-        if len(fi.source_map) > 0:
-            minl, maxl = min(fi.source_map), max(fi.source_map)
-            lineno = fi.lineno
+    def variables(self, frame_info):
+        if not self.show_vals:
+            return []
 
-            if self.lines == 0:
-                source_lines = []
-            elif self.lines == 1:
-                source_lines = [lineno]
-            elif self.lines == 'all':
-                source_lines = range(minl, maxl + 1)
-            elif self.lines > 1 or self.lines_after > 0:
-                start = max(lineno - (self.lines - 1), 0)
-                stop = lineno + self.lines_after
-                start = max(start, minl)
-                stop = min(stop, maxl)
-                source_lines = list(range(start, stop + 1))
-
-            if source_lines and self.show_signature:
-                source_lines = sorted(set(source_lines) | set(fi.head_lns))
-
-        if source_lines:
-            # Report a bit more info about a weird class of bug
-            # that I can't reproduce locally.
-            if not set(source_lines).issubset(fi.source_map.keys()):
-                debug_vals = [source_lines, fi.head_lns, fi.source_map.keys()]
-                info = ', '.join(str(p) for p in debug_vals)
-                raise Exception("Picked an invalid source context: %s" % info)
-            trimmed_source_map = trim_source(fi.source_map, source_lines)
+        if self.show_vals == 'all':
+            variables = frame_info.variables
+        elif self.show_vals == 'like_source':
+            variables = frame_info.variables_in_lines
+        elif self.show_vals == 'line':
+            variables = frame_info.variables_in_executing_piece
         else:
-            trimmed_source_map = {}
+            raise ValueError("Unknown option " + self.show_vals)
 
-        if self.show_vals:
-            if self.show_vals == 'all':
-                val_lines = range(minl, maxl)
-            elif self.show_vals == 'like_source':
-                val_lines = source_lines
-            elif self.show_vals == 'line':
-                val_lines = [lineno] if source_lines else []
+        variables = sorted(
+            [
+                variable
+                for variable in variables
+                if not self.hide_variable(variable.name, variable.value)
+            ],
+            key=lambda var: min(node.first_token.start for node in var.nodes)
+        )
 
-            # TODO refactor the whole blacklistling mechanism below:
+        return variables
 
-            def hide(name):
-                value = fi.assignments[name]
-                if callable(value):
-                    qualified_name, path, *_ = inspect_callable(value)
-                    is_builtin = value.__class__.__name__ == 'builtin_function_or_method'
-                    is_boring = is_builtin or (qualified_name == name)
-                    is_suppressed = match(path, self.suppressed_paths)
-                    return is_boring or is_suppressed
-                return False
+    def hide_variable(self, name, value):
+        if not callable(value):
+            return False
 
-            visible_vars = (name for ln in val_lines
-                            for name in fi.line2names[ln]
-                            if name in fi.assignments)
+        qualified_name, path, *_ = inspect_callable(value)
 
-            visible_assignments = OrderedDict([(n, fi.assignments[n])
-                                               for n in visible_vars
-                                               if not hide(n)])
-        else:
-            visible_assignments = {}
+        is_builtin = value.__class__.__name__ == 'builtin_function_or_method'
+        is_boring = is_builtin or qualified_name == name
+        if is_boring:
+            return True
 
-        return trimmed_source_map, visible_assignments
+        is_suppressed = match(path, self.suppressed_paths)
+        if is_suppressed:
+            return True
 
 
 class ColorfulFrameFormatter(FrameFormatter):
@@ -278,80 +279,36 @@ class ColorfulFrameFormatter(FrameFormatter):
         return get_ansi_tpl(*self.colors[name])
 
     def _format_frame(self, fi):
-        basepath, filename = os.path.split(fi.filename)
+        basepath, filename = os.path.split(fi.code.co_filename)
         sep = os.sep if basepath else ''
-        msg = self.headline_tpl % (basepath, sep, filename, fi.lineno, fi.function)
-        source_map, assignments = self.select_scope(fi)
+        msg = self.headline_tpl % (basepath, sep, filename, fi.lineno, fi.executing.code_qualname())
 
-        colormap = self._pick_colors(source_map, fi.name2lines, assignments, fi.lineno)
+        colormap = self._pick_colors(fi.variables)
 
-        if source_map:
-            source_lines = self._format_source(source_map, colormap, fi.lineno)
-            msg += self._format_listing(source_lines, fi.lineno)
+        variables = self.variables(fi)
+        if 1:
+            msg += self._format_listing(fi.lines, colormap, variables)
 
-        if assignments:
-            msg += self._format_assignments(assignments, colormap)
+        if variables:
+            msg += self._format_assignments(variables, colormap)
         elif self.lines == 'all' or self.lines > 1 or self.show_signature:
             msg += '\n'
 
         return msg
 
-    def _format_source(self, source_map, colormap, lineno):
-        bold_tp = self.tpl('source_bold')
-        default_tpl = self.tpl('source_default')
-        comment_tpl = self.tpl('source_comment')
-
-        source_lines = OrderedDict()
-        for ln in source_map:
-            line = ''
-            for snippet, ttype in source_map[ln]:
-                if ttype in [sc.KEYWORD, sc.OP]:
-                    line += bold_tp % snippet
-                elif ttype == sc.VAR:
-                    if snippet not in colormap:
-                        line += default_tpl % snippet
-                    else:
-                        hue, sat, val, bold = colormap[snippet]
-                        var_tpl = get_ansi_tpl(hue, sat, val, bold)
-                        line += var_tpl % snippet
-                elif ttype == sc.CALL:
-                    line += bold_tp % snippet
-                elif ttype == sc.COMMENT:
-                    line += comment_tpl % snippet
-                else:
-                    line += default_tpl % snippet
-            source_lines[ln] = line
-
-        return source_lines
-
-    def _format_assignments(self, assignments, colormap):
-        msgs = []
-        for name, value in assignments.items():
-            val_str = format_value(value,
-                                   indent=len(name) + self.var_indent + 3,
-                                   truncation=self.truncate_vals)
-            assign_str = self.val_tpl % (name, val_str)
-            hue, sat, val, bold = colormap.get(name, self.colors['var_invisible'])
-            clr_str = get_ansi_tpl(hue, sat, val, bold) % assign_str
-            msgs.append(clr_str)
-        if len(msgs) > 0:
-            return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n\n'
-        else:
-            return ''
-
-    def _pick_colors(self, source_map, name2lines, assignments, lineno):
+    def _pick_colors(self, variables):
         # TODO refactor: pick a hash for each name across frames, _then_ color.
         # Currently, colors are consistent across frames purely because there's
         # a fixed map from hashes to colors. It's not bijective though. If colors
         # were picked after hashing across all frames, that could be fixed.
-        colormap = {}
-        for line in source_map.values():
-            for name, ttype in line:
-                if name not in colormap and ttype == sc.VAR and name in assignments:
-                    value = assignments[name]
-                    highlight = lineno in name2lines[name]
-                    colormap[name] = self._pick_color(name, value, highlight)
-        return colormap
+        return {
+            variable: self._pick_color(
+                variable.name,
+                variable.value,
+                highlight=False,  # TODO
+            )
+            for variable in variables
+        }
 
     def _pick_color(self, name, val, highlight=False, method='id'):
         if method == 'formatted':

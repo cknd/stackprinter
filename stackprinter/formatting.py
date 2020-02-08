@@ -4,6 +4,8 @@ Various convnenience methods to walk stacks and concatenate formatted frames
 import types
 import traceback
 
+import stack_data
+
 import stackprinter.extraction as ex
 import stackprinter.colorschemes as colorschemes
 from stackprinter.utils import match, get_ansi_tpl
@@ -71,8 +73,7 @@ def format_stack(frames, style='plaintext', source_lines=5,
     frame_msgs = []
     parent_is_boring = True
     for frame in frames:
-        fi = ex.get_info(frame)
-        is_boring = match(fi.filename, suppressed_paths)
+        is_boring = match(frame.filename, suppressed_paths)
         if is_boring:
             if parent_is_boring:
                 formatter = minimal_formatter
@@ -82,7 +83,7 @@ def format_stack(frames, style='plaintext', source_lines=5,
             formatter = verbose_formatter
 
         parent_is_boring = is_boring
-        frame_msgs.append(formatter(fi))
+        frame_msgs.append(formatter(frame))
 
     if reverse:
         frame_msgs = reversed(frame_msgs)
@@ -98,12 +99,7 @@ def format_stack_from_frame(fr, add_summary=False, **kwargs):
     keyword args like stackprinter.format()
 
     """
-    stack = []
-    while fr is not None:
-        stack.append(fr)
-        fr = fr.f_back
-    stack = reversed(stack)
-
+    stack = stack_data.FrameInfo.stack_data(fr, collapse_repeated_frames=False)
     return format_stack(stack, **kwargs)
 
 
