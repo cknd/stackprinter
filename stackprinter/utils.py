@@ -11,7 +11,13 @@ def match(string, patterns):
         patterns = [patterns]
     elif patterns is None:
         return False
-    return any([bool(re.search(p, string)) for p in patterns])
+    
+    # compile the list of strings to a pattern
+    for i, p in patterns:
+        if isinstance(p, str):
+            patterns[i] = re.compile(p)
+    
+    return any([bool(p.search(string)) for p in patterns])
 
 def inspect_callable(f):
     """
