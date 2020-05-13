@@ -34,7 +34,7 @@ def format_value(value, indent=0, truncation=None, wrap=60,
         cut after this nr of characters
 
     wrap: int
-        insert linebreaks after this nr of characters
+        insert linebreaks after this nr of characters, use 0 to never add a linebreak
 
     max_depth: int
         max repeated calls to this function when formatting container types
@@ -241,6 +241,8 @@ def truncate(string, n):
 
 
 def wrap_lines(string, max_width=80):
+    if max_width <= 0:
+        return string
 
     def wrap(lines):
         for l in lines:
