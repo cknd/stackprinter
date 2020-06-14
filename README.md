@@ -4,7 +4,7 @@
 
 # Better tracebacks
 
-This is a more helpful version of Python's built-in exception message: It shows more code context and the current values of nearby variables. This answers many of the questions I'd ask an interactive debugger: Where in the code was the crash, what's in the relevant local variables, and why was _that_ function called with _those_ arguments. It either prints to the console or gives you a string for logging. [It's for Python 3.](https://github.com/cknd/stackprinter/issues/2#issuecomment-489458606)
+This is a more helpful version of Python's built-in exception message: It shows more code context and the current values of nearby variables. That answers many of the questions I'd ask an interactive debugger: Where in the code was the crash, what's in the relevant local variables, and why was _that_ function called with _those_ arguments. It either prints to the console or gives you a string for logging. [It's for Python 3.](https://github.com/cknd/stackprinter/issues/2#issuecomment-489458606)
 
 ```bash
 pip install stackprinter
@@ -67,7 +67,7 @@ I occasionally use this locally instead of a real debugger, but mostly it helps 
 # Usage
 
 ## Exception logging
-To replace the default python crash printout, call `set_excepthook()` somewhere. This will print detailed stacktraces for any uncaught exception (to stderr, by default). You could also [make this permanent for your python installation](#making-it-stick).
+To replace the default python crash printout, call `set_excepthook()` somewhere. This will print detailed stacktraces for any uncaught exception except KeyboardInterrupts (to stderr, by default). You could also [make this permanent for your python installation](#making-it-stick).
 
 ```python
 import stackprinter
@@ -105,7 +105,7 @@ configure_logging() # adds a custom log formatter, see link above
 try:
     something()
 except:
-    logger.exception('The front fell off.')
+    logger.exception('The front fell off.')  # Logs a traceback along with the given message
 ```
 
 ## Printing the current call stack
@@ -124,24 +124,6 @@ thread.start()
 # (...)
 stackprinter.show(thread) # or format(thread)
 ```
-
-## Tracing a piece of code
-
-More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all calls & returns 'live' as they are happening. Slows everything down though, of course.
-```python
-with stackprinter.TracePrinter(style='darkbg2'):
-    dosomething()
-```
-
-or
-```python
-tp = stackprinter.TracePrinter(style='darkbg2')
-tp.enable()
-dosomething()
-# (...) +1 million lines
-tp.disable()
-```
-<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/trace.png" width="300">
 
 ## Making it stick
 
@@ -176,6 +158,23 @@ as we want to inspect some thread's call stack (...or is there?)
 
 # Docs
 
-\*coughs\*
+For now, the docs only consist of this Readme and the docstrings, [e.g. those of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137)
 
-For now, just look at all the doc strings, [e.g. those of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137)
+## Tracing a piece of code
+
+More for curiosity than anything else, you can watch a piece of code execute step-by-step, printing a trace of all calls & returns 'live' as they are happening. Slows everything down though, of course.
+```python
+with stackprinter.TracePrinter(style='darkbg2'):
+    dosomething()
+```
+
+or
+```python
+tp = stackprinter.TracePrinter(style='darkbg2')
+tp.enable()
+dosomething()
+# (...) +1 million lines
+tp.disable()
+```
+<img src="https://raw.githubusercontent.com/cknd/stackprinter/master/trace.png" width="300">
+
