@@ -56,7 +56,7 @@ File demo.py, line 6, in <lambda>
 
 TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
-By default, it tries to be somewhat polite about screen space (showing only a handful of source lines & the function header, and only the variables _in those lines_, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127) exactly how verbose things should be.
+By default, it tries to be somewhat polite about screen space (showing only a handful of source lines & the function header, and only the variables _in those lines_, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137) exactly how verbose things should be.
 
 It outputs plain text normally, which is good for log files. There's also a color mode for some reason 🌈, with a few different color schemes for light and dark backgrounds. (The colors [track different variables](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df) instead of the language syntax.)
 
