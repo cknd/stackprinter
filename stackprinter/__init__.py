@@ -117,6 +117,11 @@ def format(thing=None, **kwargs):
         Example: To hide numpy internals from the traceback, set
         `suppressed_paths=[r"lib/python.*/site-packages/numpy"]`
 
+    suppressed_exception_types: list of exception classes
+        Show less verbose formatting for exceptions in this list.
+        By default, this list is `[KeyboardInterrupt]`. Set to `[]`
+        to force verbose formatting even on a keyboard interrupt.
+
     reverse: bool
         List the innermost frame first.
 
