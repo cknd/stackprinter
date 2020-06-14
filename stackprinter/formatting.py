@@ -157,7 +157,8 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
         parts = []
         if tb:
             frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
-            if suppressed_exceptions and etype in suppressed_exceptions:
+            if (suppressed_exceptions and
+                issubclass(etype, tuple(suppressed_exceptions))):
                 summary = format_summary(frameinfos, style=style,
                                          reverse=reverse, **kwargs)
                 parts = [summary]
