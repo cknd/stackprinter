@@ -106,6 +106,10 @@ def format(thing=None, **kwargs):
         Maximum number of characters to be used for each variable value.
         Default: 500
 
+    line_wrap: int (default 60)
+        Limit how many columns are available to print each variable
+        (excluding its name). Set to 0 or False to disable wrapping.
+
     suppressed_paths: list of regex patterns
         Set less verbose formatting for frames whose code lives in certain paths
         (e.g. library code). Files whose path matches any of the given regex

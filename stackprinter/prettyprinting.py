@@ -241,7 +241,7 @@ def truncate(string, n):
 
 
 def wrap_lines(string, max_width=80):
-    if max_width <= 0:
+    if not max_width or max_width <= 0:
         return string
 
     def wrap(lines):
