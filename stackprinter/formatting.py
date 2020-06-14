@@ -108,18 +108,20 @@ def format_stack_from_frame(fr, add_summary=False, **kwargs):
 
 
 def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
-                    reverse=False, **kwargs):
+                    reverse=False, suppressed_exceptions=[KeyboardInterrupt],
+                    **kwargs):
     """
     Format an exception traceback, including the exception message
 
-    keyword args like stackprinter.format()
+    see stackprinter.format() for docs about the keyword arguments
     """
     msg = ''
     try:
-        # First, recursively format any chained exceptions (exceptions during whose handling
-        # the given one happened).
-        # TODO: refactor this whole messy function to return a more... structured datastructure
-        # before assembling a string, so that e.g. a summary of the whole chain can be shown at
+        # First, recursively format any chained exceptions (exceptions
+        # during whose handling the given one happened).
+        # TODO: refactor this whole messy function to return a
+        # more... structured datastructure before assembling a string,
+        # so that e.g. a summary of the whole chain can be shown at
         # the end.
         context = getattr(evalue, '__context__', None)
         cause = getattr(evalue, '__cause__', None)
@@ -152,30 +154,38 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
                 msg += clr % chain_hint
 
         # Now, actually do some formatting:
-        msgs = []
+        parts = []
         if tb:
             frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
-            stack_msg = format_stack(frameinfos, style=style, reverse=reverse, **kwargs)
-            msgs.append(stack_msg)
+            if (suppressed_exceptions and
+                issubclass(etype, tuple(suppressed_exceptions))):
+                summary = format_summary(frameinfos, style=style,
+                                         reverse=reverse, **kwargs)
+                parts = [summary]
+            else:
+                whole_stack = format_stack(frameinfos, style=style,
+                                           reverse=reverse, **kwargs)
+                parts.append(whole_stack)
 
-            if add_summary == 'auto':
-                add_summary = stack_msg.count('\n') > 50
+                if add_summary == 'auto':
+                    add_summary = whole_stack.count('\n') > 50
 
-            if add_summary:
-                summ = format_summary(frameinfos, style=style, reverse=reverse, **kwargs)
-                summ += '\n'
-                msgs.append('---- (full traceback below) ----\n\n' if reverse else
-                            '---- (full traceback above) ----\n')
-                msgs.append(summ)
+                if add_summary:
+                    summary = format_summary(frameinfos, style=style,
+                                             reverse=reverse, **kwargs)
+                    summary += '\n'
+                    parts.append('---- (full traceback below) ----\n\n' if reverse else
+                                 '---- (full traceback above) ----\n')
+                    parts.append(summary)
 
         exc = format_exception_message(etype, evalue, style=style)
-        msgs.append('\n\n' if reverse else '')
-        msgs.append(exc)
+        parts.append('\n\n' if reverse else '')
+        parts.append(exc)
 
         if reverse:
-            msgs = reversed(msgs)
+            parts = reversed(parts)
 
-        msg += ''.join(msgs)
+        msg += ''.join(parts)
 
     except Exception as exc:
         import os
