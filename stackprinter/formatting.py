@@ -39,7 +39,7 @@ def format_summary(frames, style='plaintext', source_lines=1, reverse=False,
 
 def format_stack(frames, style='plaintext', source_lines=5,
                  show_signature=True, show_vals='like_source',
-                 truncate_vals=500, reverse=False, suppressed_paths=None):
+                 truncate_vals=500, line_wrap=60, reverse=False, suppressed_paths=None):
     """
     Render a list of frames (or FrameInfo tuples)
 
@@ -59,6 +59,7 @@ def format_stack(frames, style='plaintext', source_lines=5,
                                       show_signature=show_signature,
                                       show_vals=show_vals,
                                       truncate_vals=truncate_vals,
+                                      line_wrap=line_wrap,
                                       suppressed_paths=suppressed_paths)
 
     verbose_formatter = get_formatter(style=style,
@@ -66,6 +67,7 @@ def format_stack(frames, style='plaintext', source_lines=5,
                                       show_signature=show_signature,
                                       show_vals=show_vals,
                                       truncate_vals=truncate_vals,
+                                      line_wrap=line_wrap,
                                       suppressed_paths=suppressed_paths)
 
     frame_msgs = []

@@ -22,7 +22,8 @@ class FrameFormatter():
     val_tpl = ' ' * var_indent + "%s = %s\n"
 
     def __init__(self, source_lines=5, source_lines_after=1,
-                 show_signature=True, show_vals='like_source', truncate_vals=500,
+                 show_signature=True, show_vals='like_source',
+                 truncate_vals=500, line_wrap: int = 60,
                  suppressed_paths=None):
         """
         Formatter for single frames.
@@ -55,6 +56,10 @@ class FrameFormatter():
         truncate_vals: int (default 500)
             Maximum number of characters to be used for each variable value
 
+        line_wrap: int (default 60)
+            insert linebreaks after this nr of characters, use 0 to never insert
+            a linebreak
+
         suppressed_paths: list of regex patterns
             Set less verbose formatting for frames whose code lives in certain paths
             (e.g. library code). Files whose path matches any of the given regex
@@ -82,7 +87,8 @@ class FrameFormatter():
         self.show_signature = show_signature
         self.show_vals = show_vals
         self.truncate_vals = truncate_vals
-        self.suppressed_paths = suppressed_paths  # already compile regexes and make a `match` callable?
+        self.line_wrap = line_wrap
+        self.suppressed_paths = suppressed_paths
 
     def __call__(self, frame, lineno=None):
         """
@@ -174,7 +180,8 @@ class FrameFormatter():
         for name, value in assignments.items():
             val_str = format_value(value,
                                    indent=len(name) + self.var_indent + 3,
-                                   truncation=self.truncate_vals)
+                                   truncation=self.truncate_vals,
+                                   wrap=self.line_wrap)
             assign_str = self.val_tpl % (name, val_str)
             msgs.append(assign_str)
         if len(msgs) > 0:
@@ -329,7 +336,8 @@ class ColorfulFrameFormatter(FrameFormatter):
         for name, value in assignments.items():
             val_str = format_value(value,
                                    indent=len(name) + self.var_indent + 3,
-                                   truncation=self.truncate_vals)
+                                   truncation=self.truncate_vals,
+                                   wrap=self.line_wrap)
             assign_str = self.val_tpl % (name, val_str)
             hue, sat, val, bold = colormap.get(name, self.colors['var_invisible'])
             clr_str = get_ansi_tpl(hue, sat, val, bold) % assign_str
