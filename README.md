@@ -95,7 +95,7 @@ except RuntimeError as exc:
     logger.error('The front fell off.\n' + tb)
 ```
 
-For all the config options, for now, [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L82-L127).
+For all the config options, for now, [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137).
 
 It's also possible to integrate this neatly with standard logging calls [through a bit of extra plumbing](https://github.com/cknd/stackprinter/blob/master/demo_logging.py).
 
