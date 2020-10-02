@@ -47,4 +47,11 @@ def test_exception_formatting():
     print(msg_color)
 
 
+def test_none_tuple_formatting():
+    output = stackprinter.format((None, None, None))
+    assert output == "NoneType: None"
 
+
+def test_none_value_formatting():
+    output = stackprinter.format((TypeError, None, None))
+    assert output == "TypeError: None"
