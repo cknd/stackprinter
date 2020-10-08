@@ -117,6 +117,9 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
 
     see stackprinter.format() for docs about the keyword arguments
     """
+    if etype is None:
+        etype = type(None)
+
     msg = ''
     try:
         # First, recursively format any chained exceptions (exceptions

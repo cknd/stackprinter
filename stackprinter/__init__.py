@@ -310,8 +310,8 @@ def _is_exc_info(thing):
     if not isinstance(thing, tuple) or len(thing) != 3:
         return False
     a, b, c = thing
-    return (isinstance(a, type) and BaseException in a.mro() and
-            isinstance(b, BaseException))
+    return ((a is None or (isinstance(a, type) and BaseException in a.mro())) and
+            (b is None or (isinstance(b, BaseException))))
 
 def format_thread(thread, add_summary=False, **kwargs):
     try:
