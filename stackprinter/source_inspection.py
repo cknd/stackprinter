@@ -11,7 +11,7 @@ CALL = 'CALL'
 OP = 'OP'
 
 
-def annotate(source_lines, line_offset=0, lineno=0, max_line=1e4):
+def annotate(source_lines, line_offset=0, lineno=0, max_line=2**15):
     """
     Find out where in a piece of code which variables live.
 
@@ -57,6 +57,10 @@ def annotate(source_lines, line_offset=0, lineno=0, max_line=1e4):
     """
     if not source_lines:
         return {}, {}, {}, [], lineno
+
+    assert isinstance(line_offset, int)
+    assert isinstance(lineno, int)
+    assert isinstance(max_line, int)
 
     source_lines, lineno_corrections = join_broken_lines(source_lines)
     lineno += lineno_corrections[lineno - line_offset]
