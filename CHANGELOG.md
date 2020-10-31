@@ -1,6 +1,11 @@
 # Upcoming
 
--
+
+# 0.2.5 - Oct 31, 2020
+
+## Fixed
+- Allows passing `(None, None, None)` to `format_exception`
+- Fixed a crashing type error that could occur in longer code scopes (e.g. in the repl)
 
 # 0.2.4 - June 17, 2020
 

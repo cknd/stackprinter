@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     python_requires=">=3.4",
     name="stackprinter",
-    version="0.2.4",
+    version="0.2.5",
     author="cknd",
     author_email="ck-github@mailbox.org",
     description="Debug-friendly stack traces, with variable values and semantic highlighting",

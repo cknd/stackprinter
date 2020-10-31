@@ -4,10 +4,12 @@
 
 # Better tracebacks
 
-This is a more helpful version of Python's built-in exception message: It shows more code context and the current values of nearby variables. That answers many of the questions I'd ask an interactive debugger: Where in the code was the crash, what's in the relevant local variables, and why was _that_ function called with _those_ arguments. It either prints to the console or gives you a string for logging. [It's for Python 3.](https://github.com/cknd/stackprinter/issues/2#issuecomment-489458606)
+This is a more helpful version of Python's built-in exception message: It shows more code context and the current values of nearby variables. That answers many of the questions I'd ask an interactive debugger: Where in the code was the crash, what's in the relevant variables, and why was _that_ function called with _those_ arguments. It either prints to the console or gives you a string for logging.
+
+I sometimes use this locally instead of a real debugger, but mostly it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
 
 ```bash
-pip install stackprinter
+pip3 install stackprinter
 ```
 ### Before
 ```
@@ -60,8 +62,6 @@ By default, it tries to be somewhat polite about screen space (showing only a ha
 
 It outputs plain text normally, which is good for log files. There's also a color mode for some reason 🌈, with a few different color schemes for light and dark backgrounds. (The colors [track different variables](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df) instead of the language syntax.)
 
-I occasionally use this locally instead of a real debugger, but mostly it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
-
 <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/notebook.png" width="500">
 
 # Usage
@@ -95,8 +95,6 @@ except RuntimeError as exc:
     logger.error('The front fell off.\n' + tb)
 ```
 
-For all the config options, for now, [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137).
-
 It's also possible to integrate this neatly with standard logging calls [through a bit of extra plumbing](https://github.com/cknd/stackprinter/blob/master/demo_logging.py).
 
 ```python
@@ -105,8 +103,10 @@ configure_logging() # adds a custom log formatter, see link above
 try:
     something()
 except:
-    logger.exception('The front fell off.')  # Logs a traceback along with the given message
+    logger.exception('The front fell off.')  # Logs a rich traceback along with the given message
 ```
+
+For all the config options [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137).
 
 ## Printing the current call stack
 To see your own thread's current call stack, call `show` or `format` anywhere outside of exception handling.
