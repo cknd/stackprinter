@@ -120,6 +120,8 @@ def format(thing=None, **kwargs):
 
         Example: To hide numpy internals from the traceback, set
         `suppressed_paths=[r"lib/python.*/site-packages/numpy"]`
+        or
+        `suppressed_paths=[re.compile(r"lib/python.*/site-packages/numpy")]`
 
     suppressed_exception_types: list of exception classes
         Show less verbose formatting for exceptions in this list.
