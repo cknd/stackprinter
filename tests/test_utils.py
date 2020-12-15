@@ -1,5 +1,6 @@
-from stackprinter.utils import match
 import re
+
+from stackprinter.utils import match
 
 
 def test_match():
