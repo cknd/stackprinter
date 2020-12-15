@@ -4,14 +4,15 @@ import inspect
 import colorsys
 from collections import OrderedDict
 
+
 def match(string, patterns):
-    if not isinstance(string, str):
+    if patterns is None or not isinstance(string, str):
         return False
     if isinstance(patterns, str):
         patterns = [patterns]
-    elif patterns is None:
-        return False
-    return any([bool(re.search(p, string)) for p in patterns])
+
+    return any(map(lambda p: re.search(p, string), patterns))
+
 
 def inspect_callable(f):
     """
