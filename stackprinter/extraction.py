@@ -95,23 +95,30 @@ def get_info(tb_or_frame, lineno=None):
         source = []
         startline = lineno
 
-    if lineno < startline:
-        # Catch rare case where the tb or frame has a wrong current line number,
-        # or a wrong number for the starting line of its code block.
-        # This looks like a python bug or an `inspect.getsource` bug --
-        # OR a getsource bug that is ultimately a python bug, because `inspect`
-        # just uses `frame.f_code.co_firstlineno` (= the frame's own reported
-        # beginning of its code block), and I can't imagine a situation where
-        # that can legitimately not contain `frame.f_lineno`.
-        # I deal with this here by showing a warning in-band that the line
-        # number can't be 100% trusted, while also  moving the active line shown
-        # down to the first available source line.
-        corrected_lineno = startline  # move the reported active line
+    # <Hack>
+    # Catch a rare case where the tb or frame has a wrong current line number
+    # or maybe a wrongly reported starting line of its code block.
+    # This seems to be a python bug or an `inspect.getsource` bug --
+    # OR a `getsource` bug that is ultimately a python bug, because `inspect`
+    # ultimately uses `frame.f_code.co_firstlineno` (= the frame's own reported
+    # beginning of its code block), and I can't imagine a situation where
+    # that can legitimately not contain `frame.f_lineno`. Instead of crashing,
+    # I deal with this here by showing a warning in-band that the line
+    # number can't be 100% trusted, while also  moving the active line shown
+    # to the first available source line of the scope.
+    lastline = startline + len(source) - 1
+    corrected_lineno = lineno
+    if (lineno < startline):
+        corrected_lineno = startline
+    if (lineno > lastline):
+        corrected_lineno = lastline
+    if corrected_lineno != lineno:
         source = ["# // Stackprinter: This frame reported a line number outside"
                   " its reported code scope. Line %d reported, but guessing"
                   " %d instead.\n" % (lineno, corrected_lineno)] + source
         startline -= 1 # account for the in-band warning prepended to our source
         lineno = corrected_lineno
+    # </Hack>
 
     source_map, line2names, name2lines, head_lns, lineno = annotate(source, startline, lineno)
 
