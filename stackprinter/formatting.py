@@ -109,89 +109,93 @@ def format_stack_from_frame(fr, add_summary=False, **kwargs):
     return format_stack(stack, **kwargs)
 
 
-def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
-                    reverse=False, suppressed_exceptions=[KeyboardInterrupt],
-                    **kwargs):
+def format_parts(etype, evalue, tb, style='plaintext', add_summary='auto',
+                 reverse=False, suppressed_exceptions=[KeyboardInterrupt],
+                 **kwargs):
+    """ Render this exception's traceback as a list of strings """
+
+    parts = []
+    if etype is None:
+        etype = type(None)
+
+    # First, recursively format any chained exceptions (exceptions
+    # during whose handling the given one happened).
+    # TODO: refactor this whole messy function to return a
+    # more... structured datastructure before assembling a string,
+    # so that e.g. a summary of the whole chain can be shown at
+    # the end.
+    context = getattr(evalue, '__context__', None)
+    cause = getattr(evalue, '__cause__', None)
+    suppress_context = getattr(evalue, '__suppress_context__', False)
+    if cause:
+        chained_exc = cause
+        chain_hint = ("\n\nThe above exception was the direct cause "
+                      "of the following exception:\n\n")
+    elif context and not suppress_context:
+        chained_exc = context
+        chain_hint = ("\n\nWhile handling the above exception, "
+                      "another exception occurred:\n\n")
+    else:
+        chained_exc = None
+
+    if chained_exc:
+        parts.extend(format_parts(chained_exc.__class__,
+                                  chained_exc,
+                                  chained_exc.__traceback__,
+                                  style=style,
+                                  add_summary=add_summary,
+                                  reverse=reverse,
+                                  **kwargs))
+        if style == 'plaintext':
+            parts.append(chain_hint)
+        else:
+            sc = getattr(colorschemes, style)
+            clr = get_ansi_tpl(*sc.colors['exception_type'])
+            parts.append(clr % chain_hint)
+
+    # Now, actually do some formatting:
+    if tb:
+        frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
+        if (suppressed_exceptions and
+            issubclass(etype, tuple(suppressed_exceptions))):
+            summary = format_summary(frameinfos, style=style,
+                                     reverse=reverse, **kwargs)
+            parts = [summary]
+        else:
+            whole_stack = format_stack(frameinfos, style=style,
+                                       reverse=reverse, **kwargs)
+            parts.append(whole_stack)
+
+            if add_summary == 'auto':
+                add_summary = whole_stack.count('\n') > 50
+
+            if add_summary:
+                summary = format_summary(frameinfos, style=style,
+                                         reverse=reverse, **kwargs)
+                summary += '\n'
+                parts.append('---- (full traceback below) ----\n\n' if reverse else
+                             '---- (full traceback above) ----\n')
+                parts.append(summary)
+
+    exc = format_exception_message(etype, evalue, style=style)
+    parts.append('\n\n' if reverse else '')
+    parts.append(exc)
+
+    if reverse:
+        parts = reversed(parts)
+
+    return parts
+
+
+def format_exc_info(etype, evalue, tb, **kwargs):
     """
     Format an exception traceback, including the exception message
 
     see stackprinter.format() for docs about the keyword arguments
     """
-    if etype is None:
-        etype = type(None)
-
-    msg = ''
     try:
-        # First, recursively format any chained exceptions (exceptions
-        # during whose handling the given one happened).
-        # TODO: refactor this whole messy function to return a
-        # more... structured datastructure before assembling a string,
-        # so that e.g. a summary of the whole chain can be shown at
-        # the end.
-        context = getattr(evalue, '__context__', None)
-        cause = getattr(evalue, '__cause__', None)
-        suppress_context = getattr(evalue, '__suppress_context__', False)
-        if cause:
-            chained_exc = cause
-            chain_hint = ("\n\nThe above exception was the direct cause "
-                          "of the following exception:\n\n")
-        elif context and not suppress_context:
-            chained_exc = context
-            chain_hint = ("\n\nWhile handling the above exception, "
-                          "another exception occurred:\n\n")
-        else:
-            chained_exc = None
-
-        if chained_exc:
-            msg += format_exc_info(chained_exc.__class__,
-                                   chained_exc,
-                                   chained_exc.__traceback__,
-                                   style=style,
-                                   add_summary=add_summary,
-                                   reverse=reverse,
-                                   **kwargs)
-
-            if style == 'plaintext':
-                msg +=  chain_hint
-            else:
-                sc = getattr(colorschemes, style)
-                clr = get_ansi_tpl(*sc.colors['exception_type'])
-                msg += clr % chain_hint
-
-        # Now, actually do some formatting:
-        parts = []
-        if tb:
-            frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
-            if (suppressed_exceptions and
-                issubclass(etype, tuple(suppressed_exceptions))):
-                summary = format_summary(frameinfos, style=style,
-                                         reverse=reverse, **kwargs)
-                parts = [summary]
-            else:
-                whole_stack = format_stack(frameinfos, style=style,
-                                           reverse=reverse, **kwargs)
-                parts.append(whole_stack)
-
-                if add_summary == 'auto':
-                    add_summary = whole_stack.count('\n') > 50
-
-                if add_summary:
-                    summary = format_summary(frameinfos, style=style,
-                                             reverse=reverse, **kwargs)
-                    summary += '\n'
-                    parts.append('---- (full traceback below) ----\n\n' if reverse else
-                                 '---- (full traceback above) ----\n')
-                    parts.append(summary)
-
-        exc = format_exception_message(etype, evalue, style=style)
-        parts.append('\n\n' if reverse else '')
-        parts.append(exc)
-
-        if reverse:
-            parts = reversed(parts)
-
-        msg += ''.join(parts)
-
+        parts = format_parts(etype, evalue, tb, **kwargs)
+        msg = ''.join(parts)
     except Exception as exc:
         import os
         if 'PY_STACKPRINTER_DEBUG' in os.environ:
@@ -206,7 +210,6 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
         msg = 'Stackprinter failed%s:\n%s\n' % (context, ''.join(our_tb[-2:]))
         msg += 'So here is your original traceback at least:\n\n'
         msg += ''.join(traceback.format_exception(etype, evalue, tb))
-
 
     return msg
 
