@@ -108,15 +108,85 @@ except RuntimeError as exc:
 ```
 
 
-It's also possible to integrate this neatly with standard logging calls [through a bit of extra plumbing](https://github.com/cknd/stackprinter/blob/master/demo_logging.py).
+It's also possible to integrate this neatly with standard logging calls [through a bit of extra plumbing](https://github.com/cknd/stackprinter/blob/master/demo_logging.py):
 
 ```python
-configure_logging() # adds a custom log formatter, see link above
+import logging
+
+
+## Setup
+import stackprinter
+
+class VerboseExceptionFormatter(logging.Formatter):
+    def formatException(self, exc_info):
+        msg = stackprinter.format(exc_info)
+        lines = msg.split('\n')
+        lines_indented = ["  ┆ " + line + "\n" for line in lines]
+        msg_indented = "".join(lines_indented)
+        return msg_indented
+
+def configure_logger(logger_name=None):
+    fmt = '%(asctime)s %(levelname)s: %(message)s'
+    formatter = VerboseExceptionFormatter(fmt)
+
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+
+    logger = logging.getLogger(logger_name)
+    logger.addHandler(handler)
+
+
+configure_logger("some_logger")
+
+
+## Use
+
+logger = logging.getLogger("some_logger")
 
 try:
-    something()
+    dangerous_function()
 except:
-    logger.exception('The front fell off.')  # Logs a rich traceback along with the given message
+    logger.exception('My hovercraft is full of eels.')
+
+```
+Output:
+```bash
+2022-04-02 15:49:16,187 ERROR: My hovercraft is full of eels.
+  ┆ File "/Users/c/Dropbox/projects/tracebacks/demo_logging.py", line 57, in <module>
+  ┆     53
+  ┆     54   try:
+  ┆     55       somelist = [[1,2], [3,4]]
+  ┆     56       anotherlist = [['5', 6]]
+  ┆ --> 57       dangerous_function(somelist + anotherlist)
+  ┆     58   except:
+  ┆     ..................................................
+  ┆      somelist = [[1, 2, ], [3, 4, ], ]
+  ┆      anotherlist = [['5', 6, ], ]
+  ┆     ..................................................
+  ┆
+  ┆ File "/Users/c/Dropbox/projects/tracebacks/demo_logging.py", line 52, in dangerous_function
+  ┆     51   def dangerous_function(blub):
+  ┆ --> 52       return sorted(blub, key=lambda xs: sum(xs))
+  ┆     ..................................................
+  ┆      blub = [[1, 2, ], [3, 4, ], ['5', 6, ], ]
+  ┆     ..................................................
+  ┆
+  ┆ File "/Users/c/Dropbox/projects/tracebacks/demo_logging.py", line 52, in <lambda>
+  ┆     48   print("\n\n")
+  ┆     49   logger = logging.getLogger("some_logger")
+  ┆     50
+  ┆     51   def dangerous_function(blub):
+  ┆ --> 52       return sorted(blub, key=lambda xs: sum(xs))
+  ┆     53
+  ┆     ..................................................
+  ┆      logger = <Logger some_logger (WARNING)>
+  ┆      logging.getLogger = <function 'getLogger' __init__.py:2030>
+  ┆      xs = ['5', 6, ]
+  ┆     ..................................................
+  ┆
+  ┆ TypeError: unsupported operand type(s) for +: 'int' and 'str'
+
 ```
 
 
