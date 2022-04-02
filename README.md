@@ -156,7 +156,6 @@ def configure_logger(logger_name=None):
     fmt = '%(asctime)s %(levelname)s: %(message)s'
     formatter = VerboseExceptionFormatter(fmt)
 
-
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
 
