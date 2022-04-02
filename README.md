@@ -111,7 +111,7 @@ except RuntimeError as exc:
 
 ### Integration with the standard `logging` module
 
-With a bit of extra plumbing you can log errors like this via the normal `logging` methods, without having to import `stackprinter` at the site of the logging call. So you can continue to write nice and simple error handlers like this...
+With a bit of extra plumbing you can log errors like this via the normal `logging` methods, without having to import `stackprinter` at the site of the logging call. So you can continue to write nice and simple error handlers like so...
 
 ```python
 logger = logging.getLogger()
