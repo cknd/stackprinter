@@ -146,7 +146,6 @@ except:
 You can get this by adding a [custom formatter](https://docs.python.org/3/howto/logging-cookbook.html#customized-exception-formatting) to the logger before using it:
 
 ```python
-# Set up logging
 import logging
 import stackprinter
 
@@ -169,13 +168,6 @@ def configure_logger(logger_name=None):
     logger.addHandler(handler)
 
 configure_logger("some_logger")
-
-# Use it
-logger = logging.getLogger("some_logger")
-try:
-    something()
-except:
-    logger.exception("message")
 ```
 See [demo_logging.py](https://github.com/cknd/stackprinter/blob/master/demo_logging.py) for a runnable example.
 
