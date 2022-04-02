@@ -95,6 +95,8 @@ except RuntimeError as exc:
     logger.error('The front fell off.\n' + tb)
 ```
 
+### Config options
+
 For all the config options [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149).
 The same config kwargs are accepted by `format()`, `show()` and `set_excepthook()`. They allow you to tweak the formatting, hide certain variables by name, skip variables in calls within certain files, and some other stuff.
 
@@ -106,6 +108,8 @@ except RuntimeError as exc:
                            suppressed_paths=[r"lib/python.*/site-packages/boringstuff"],
                            truncate_vals=9001)
 ```
+
+### Integration with the standard `logging` module
 
 It's also possible to integrate this neatly with standard logging calls through a bit of extra plumbing. The goal is to use the built in `logging` module's error handling method without explicitly importing `stackprinter` at the site of the logging call...
 ```python
