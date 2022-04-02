@@ -2,6 +2,7 @@ import types
 import inspect
 from collections import OrderedDict, namedtuple
 from stackprinter.source_inspection import annotate
+from stackprinter.utils import match
 
 NON_FUNCTION_SCOPES =  ['<module>', '<lambda>', '<listcomp>']
 
@@ -16,7 +17,7 @@ class FrameInfo(_FrameInfo):
                 (self.filename, self.lineno, self.function))
 
 
-def get_info(tb_or_frame, lineno=None):
+def get_info(tb_or_frame, lineno=None, suppressed_vars=[]):
     """
     Get a frame representation that's easy to format
 
@@ -101,7 +102,7 @@ def get_info(tb_or_frame, lineno=None):
         head_lns = []
 
     names = name2lines.keys()
-    assignments = get_vars(names, frame.f_locals, frame.f_globals)
+    assignments = get_vars(names, frame.f_locals, frame.f_globals, suppressed_vars)
 
     finfo =  FrameInfo(filename, function, lineno, source_map, head_lns,
                        line2names, name2lines, assignments)
@@ -139,15 +140,18 @@ def get_source(frame):
     return lines, startline
 
 
-def get_vars(names, loc, glob):
+def get_vars(names, loc, glob, suppressed_vars):
     assignments = []
     for name in names:
-        try:
-            val = lookup(name, loc, glob)
-        except LookupError:
-            pass
+        if match(name, suppressed_vars):
+            assignments.append((name, CensoredVariable()))
         else:
-            assignments.append((name, val))
+            try:
+                val = lookup(name, loc, glob)
+            except LookupError:
+                pass
+            else:
+                assignments.append((name, val))
     return OrderedDict(assignments)
 
 
@@ -173,6 +177,10 @@ def lookup(name, scopeA, scopeB):
                                        e.__class__.__name__, str(e))
     return val
 
+
+class CensoredVariable():
+    def __repr__(self):
+        return "*****"
 
 class UnresolvedAttribute():
     """
