@@ -153,7 +153,7 @@ except:
 Output:
 ```
 2022-04-02 15:49:16,187 ERROR: My hovercraft is full of eels.
-  ┆ File "/Users/c/Dropbox/projects/tracebacks/demo_logging.py", line 57, in <module>
+  ┆ File "demo_logging.py", line 57, in <module>
   ┆     53
   ┆     54   try:
   ┆     55       somelist = [[1,2], [3,4]]
@@ -165,14 +165,14 @@ Output:
   ┆      anotherlist = [['5', 6, ], ]
   ┆     ..................................................
   ┆
-  ┆ File "/Users/c/Dropbox/projects/tracebacks/demo_logging.py", line 52, in dangerous_function
+  ┆ File "demo_logging.py", line 52, in dangerous_function
   ┆     51   def dangerous_function(blub):
   ┆ --> 52       return sorted(blub, key=lambda xs: sum(xs))
   ┆     ..................................................
   ┆      blub = [[1, 2, ], [3, 4, ], ['5', 6, ], ]
   ┆     ..................................................
   ┆
-  ┆ File "/Users/c/Dropbox/projects/tracebacks/demo_logging.py", line 52, in <lambda>
+  ┆ File "demo_logging.py", line 52, in <lambda>
   ┆     48   print("\n\n")
   ┆     49   logger = logging.getLogger("some_logger")
   ┆     50
