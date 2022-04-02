@@ -1,5 +1,7 @@
-# Upcoming
+# 0.2.6 - Oct 31, 2020
 
+## Added
+- New kwarg `suppressed_vars` to redact certain variables, e.g. to keep secrets out of error logs
 
 # 0.2.5 - Oct 31, 2020
 
