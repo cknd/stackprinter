@@ -111,15 +111,17 @@ except RuntimeError as exc:
 
 ### Integration with the standard `logging` module
 
-It's also possible to integrate this neatly with standard logging calls through a bit of extra plumbing. The goal is to use the built in `logging` module's error handling method without explicitly importing `stackprinter` at the site of the logging call...
+Through a bit of extra plumbing you can log errors with normal `logging` methods, without having to import `stackprinter` at the site of the logging call. So you can continue to have nice and simple error handlers like this...
+
 ```python
+logger = logging.getLogger()
 try:
     nothing = {}
     dangerous_function(nothing.get("something"))
 except:
     logger.exception('My hovercraft is full of eels.')
 ```
-...but getting an annotated traceback in the resulting log, still.
+...but still get annotated tracebacks in the resulting log.
 ```
 2022-04-02 16:16:40,905 ERROR: My hovercraft is full of eels.
   ┆ File "demo_logging.py", line 56, in <module>
@@ -141,7 +143,7 @@ except:
   ┆ TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'
 ```
 
-You can achieve this by adding a [custom formatter](https://docs.python.org/3/howto/logging-cookbook.html#customized-exception-formatting) to the logger beforehand:
+You get this by adding a [custom formatter](https://docs.python.org/3/howto/logging-cookbook.html#customized-exception-formatting) to the logger once before using it.
 
 ```python
 # Set up logging
