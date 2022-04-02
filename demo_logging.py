@@ -49,12 +49,10 @@ print("\n\n")
 logger = logging.getLogger("some_logger")
 
 def dangerous_function(blub):
-    return sorted(blub, key=lambda xs: sum(xs))
+    return blub + 5
 
 try:
-    somelist = [[1,2], [3,4]]
-    anotherlist = [['5', 6]]
-    dangerous_function(somelist + anotherlist)
+    dangerous_function("hello")
 except:
     logger.exception('My hovercraft is full of eels.')
     # Or equivalently:
