@@ -145,27 +145,32 @@ configure_logger("some_logger")
 logger = logging.getLogger("some_logger")
 
 try:
-    dangerous_function("hello")
+    nothing = {}.get("someting")
+    dangerous_function(nothing)
 except:
     logger.exception('My hovercraft is full of eels.')
 
 ```
 Output:
 ```
-2022-04-02 15:57:36,101 ERROR: My hovercraft is full of eels.
-  ┆ File "demo_logging.py", line 55, in <module>
+2022-04-02 16:12:33,242 ERROR: My hovercraft is full of eels.
+  ┆ File "demo_logging.py", line 56, in <module>
   ┆     54   try:
-  ┆ --> 55       dangerous_function("hello")
-  ┆     56   except:
+  ┆     55       nothing = {}.get("someting")
+  ┆ --> 56       dangerous_function(nothing)
+  ┆     57   except:
+  ┆     ..................................................
+  ┆      nothing = None
+  ┆     ..................................................
   ┆
   ┆ File "demo_logging.py", line 52, in dangerous_function
-  ┆     51   def dangerous_function(blub):
-  ┆ --> 52       return blub + 5
+  ┆     51   def dangerous_function(something):
+  ┆ --> 52       return something + 1
   ┆     ..................................................
-  ┆      blub = 'hello'
+  ┆      something = None
   ┆     ..................................................
   ┆
-  ┆ TypeError: can only concatenate str (not "int") to str
+  ┆ TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'
 ```
 
 

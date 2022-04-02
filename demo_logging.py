@@ -48,11 +48,12 @@ configure_logger("some_logger")
 print("\n\n")
 logger = logging.getLogger("some_logger")
 
-def dangerous_function(blub):
-    return blub + 5
+def dangerous_function(something):
+    return something + 1
 
 try:
-    dangerous_function("hello")
+    nothing = {}.get("someting")
+    dangerous_function(nothing)
 except:
     logger.exception('My hovercraft is full of eels.')
     # Or equivalently:
