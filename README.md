@@ -97,8 +97,7 @@ except RuntimeError as exc:
 
 ### Config options
 
-For all the config options [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149).
-The same config kwargs are accepted by `format()`, `show()` and `set_excepthook()`. They allow you to tweak the formatting, hide certain variables by name, skip variables in calls within certain files, and some other stuff.
+`format()`, `show()` and `set_excepthook()` accept a common set of keyword args. They allow you to tweak the formatting, hide certain variables by name, skip variables in calls within certain files, and some other stuff. For all the options [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149).
 
 ```python
 try:
@@ -106,7 +105,9 @@ try:
 except RuntimeError as exc:
     stackprinter.show(exc, suppressed_vars=[r".*secret.*"],
                            suppressed_paths=[r"lib/python.*/site-packages/boringstuff"],
-                           truncate_vals=9001)
+                           truncate_vals=9001,
+                           style="darkbg2",
+                           )
 ```
 
 ### Integration with the standard `logging` module
@@ -143,7 +144,7 @@ except:
   ┆ TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'
 ```
 
-You get this by adding a [custom formatter](https://docs.python.org/3/howto/logging-cookbook.html#customized-exception-formatting) to the logger once before using it.
+You can get this by adding a [custom formatter](https://docs.python.org/3/howto/logging-cookbook.html#customized-exception-formatting) to the logger once before using it.
 
 ```python
 # Set up logging
@@ -212,7 +213,7 @@ That would give you colorful tracebacks automatically every time, even in the RE
 
 # Docs
 
-For now, the documentation consists only of some fairly detailed docstrings, [e.g. those of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137)
+For now, the documentation consists only of some fairly detailed docstrings, [e.g. those of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149)
 
 # Caveats
 
