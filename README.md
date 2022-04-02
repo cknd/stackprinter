@@ -95,17 +95,6 @@ except RuntimeError as exc:
     logger.error('The front fell off.\n' + tb)
 ```
 
-It's also possible to integrate this neatly with standard logging calls [through a bit of extra plumbing](https://github.com/cknd/stackprinter/blob/master/demo_logging.py).
-
-```python
-configure_logging() # adds a custom log formatter, see link above
-
-try:
-    something()
-except:
-    logger.exception('The front fell off.')  # Logs a rich traceback along with the given message
-```
-
 For all the config options [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149).
 The same config kwargs are accepted by `format()`, `show()` and `set_excepthook()`. They allow you to tweak the formatting, hide certain variables by name, skip variables in calls within certain files, and some other stuff.
 
@@ -118,6 +107,17 @@ except RuntimeError as exc:
                            truncate_vals=9001)
 ```
 
+
+It's also possible to integrate this neatly with standard logging calls [through a bit of extra plumbing](https://github.com/cknd/stackprinter/blob/master/demo_logging.py).
+
+```python
+configure_logging() # adds a custom log formatter, see link above
+
+try:
+    something()
+except:
+    logger.exception('The front fell off.')  # Logs a rich traceback along with the given message
+```
 
 
 ## Printing the current call stack
