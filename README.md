@@ -145,48 +145,27 @@ configure_logger("some_logger")
 logger = logging.getLogger("some_logger")
 
 try:
-    dangerous_function()
+    dangerous_function("hello")
 except:
     logger.exception('My hovercraft is full of eels.')
 
 ```
 Output:
 ```
-2022-04-02 15:49:16,187 ERROR: My hovercraft is full of eels.
-  ┆ File "demo_logging.py", line 57, in <module>
-  ┆     53
+2022-04-02 15:57:36,101 ERROR: My hovercraft is full of eels.
+  ┆ File "demo_logging.py", line 55, in <module>
   ┆     54   try:
-  ┆     55       somelist = [[1,2], [3,4]]
-  ┆     56       anotherlist = [['5', 6]]
-  ┆ --> 57       dangerous_function(somelist + anotherlist)
-  ┆     58   except:
-  ┆     ..................................................
-  ┆      somelist = [[1, 2, ], [3, 4, ], ]
-  ┆      anotherlist = [['5', 6, ], ]
-  ┆     ..................................................
+  ┆ --> 55       dangerous_function("hello")
+  ┆     56   except:
   ┆
   ┆ File "demo_logging.py", line 52, in dangerous_function
   ┆     51   def dangerous_function(blub):
-  ┆ --> 52       return sorted(blub, key=lambda xs: sum(xs))
+  ┆ --> 52       return blub + 5
   ┆     ..................................................
-  ┆      blub = [[1, 2, ], [3, 4, ], ['5', 6, ], ]
-  ┆     ..................................................
-  ┆
-  ┆ File "demo_logging.py", line 52, in <lambda>
-  ┆     48   print("\n\n")
-  ┆     49   logger = logging.getLogger("some_logger")
-  ┆     50
-  ┆     51   def dangerous_function(blub):
-  ┆ --> 52       return sorted(blub, key=lambda xs: sum(xs))
-  ┆     53
-  ┆     ..................................................
-  ┆      logger = <Logger some_logger (WARNING)>
-  ┆      logging.getLogger = <function 'getLogger' __init__.py:2030>
-  ┆      xs = ['5', 6, ]
+  ┆      blub = 'hello'
   ┆     ..................................................
   ┆
-  ┆ TypeError: unsupported operand type(s) for +: 'int' and 'str'
-
+  ┆ TypeError: can only concatenate str (not "int") to str
 ```
 
 
