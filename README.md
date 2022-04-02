@@ -151,7 +151,7 @@ except:
 
 ```
 Output:
-```bash
+```
 2022-04-02 15:49:16,187 ERROR: My hovercraft is full of eels.
   ┆ File "/Users/c/Dropbox/projects/tracebacks/demo_logging.py", line 57, in <module>
   ┆     53
