@@ -107,17 +107,13 @@ except RuntimeError as exc:
                            truncate_vals=9001)
 ```
 
-
-It's also possible to integrate this neatly with standard logging calls through a bit of extra plumbing. The goal is to use `logging` calls from the standard library without explicitly importing `stackprinter` at the site of the logging call...
+It's also possible to integrate this neatly with standard logging calls through a bit of extra plumbing. The goal is to use the built in `logging` module's error handling method without explicitly importing `stackprinter` at the site of the logging call...
 ```python
-logger = logging.getLogger("some_logger")
-
 try:
     nothing = {}
     dangerous_function(nothing.get("something"))
 except:
     logger.exception('My hovercraft is full of eels.')
-
 ```
 ...but getting an annotated traceback in the resulting log, still.
 ```
@@ -141,10 +137,10 @@ except:
   ┆ TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'
 ```
 
-You can achieve this by [adding a custom formatter](https://docs.python.org/3/howto/logging-cookbook.html#customized-exception-formatting) to the logger before using it.
+You can achieve this by adding a [custom formatter](https://docs.python.org/3/howto/logging-cookbook.html#customized-exception-formatting) to the logger beforehand:
 
 ```python
-# Logging setup
+# Set up logging
 import logging
 import stackprinter
 
@@ -168,6 +164,13 @@ def configure_logger(logger_name=None):
     logger.addHandler(handler)
 
 configure_logger("some_logger")
+
+# Use it
+logger = logging.getLogger("some_logger")
+try:
+    something()
+except:
+    logger.exception("message")
 ```
 See [demo_logging.py](https://github.com/cknd/stackprinter/blob/master/demo_logging.py) for a runnable example.
 
