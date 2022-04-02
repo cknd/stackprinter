@@ -145,22 +145,22 @@ configure_logger("some_logger")
 logger = logging.getLogger("some_logger")
 
 try:
-    nothing = {}.get("someting")
-    dangerous_function(nothing)
+    nothing = {}
+    dangerous_function(nothing.get("something"))
 except:
     logger.exception('My hovercraft is full of eels.')
 
 ```
 Output:
 ```
-2022-04-02 16:12:33,242 ERROR: My hovercraft is full of eels.
+2022-04-02 16:16:40,905 ERROR: My hovercraft is full of eels.
   ┆ File "demo_logging.py", line 56, in <module>
   ┆     54   try:
-  ┆     55       nothing = {}.get("someting")
-  ┆ --> 56       dangerous_function(nothing)
+  ┆     55       nothing = {}
+  ┆ --> 56       dangerous_function(nothing.get("something"))
   ┆     57   except:
   ┆     ..................................................
-  ┆      nothing = None
+  ┆      nothing = {}
   ┆     ..................................................
   ┆
   ┆ File "demo_logging.py", line 52, in dangerous_function

@@ -52,8 +52,8 @@ def dangerous_function(something):
     return something + 1
 
 try:
-    nothing = {}.get("someting")
-    dangerous_function(nothing)
+    nothing = {}
+    dangerous_function(nothing.get("something"))
 except:
     logger.exception('My hovercraft is full of eels.')
     # Or equivalently:
