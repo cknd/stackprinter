@@ -26,7 +26,7 @@ def _guess_thing(f):
 
 @_guess_thing
 def format(thing=None, **kwargs):
-    """
+    r"""
     Render the traceback of an exception or a frame's call stack
 
 
@@ -127,6 +127,16 @@ def format(thing=None, **kwargs):
         Show less verbose formatting for exceptions in this list.
         By default, this list is `[KeyboardInterrupt]`. Set to `[]`
         to force verbose formatting even on a keyboard interrupt.
+
+    suppressed_vars: list of regex patterns
+        Don't show the content of variables whose name matches any of the given
+        patterns.
+        Internally, this doesn't just filter the output, but stackprinter won't
+        even try to access these values at all. So this can also be used as a
+        workaround for rare issues around dynamic attribute lookups.
+
+        Example:
+        `suppressed_vars=[r".*password.*",  r"certainobject\.certainproperty"]`
 
     reverse: bool
         List the innermost frame first.

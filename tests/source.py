@@ -68,7 +68,7 @@ def spam_spam_spam(val):
             bla.nonexistant_attribute
         except:
             pass
-
+        supersecret = "you haven't seen this"
         boing = np.\
                 random.rand(*bla.T.\
                         T.T)

@@ -24,7 +24,7 @@ class FrameFormatter():
     def __init__(self, source_lines=5, source_lines_after=1,
                  show_signature=True, show_vals='like_source',
                  truncate_vals=500, line_wrap: int = 60,
-                 suppressed_paths=None):
+                 suppressed_paths=None, suppressed_vars=None):
         """
         Formatter for single frames.
 
@@ -89,6 +89,7 @@ class FrameFormatter():
         self.truncate_vals = truncate_vals
         self.line_wrap = line_wrap
         self.suppressed_paths = suppressed_paths
+        self.suppressed_vars = suppressed_vars
 
     def __call__(self, frame, lineno=None):
         """
@@ -123,7 +124,7 @@ class FrameFormatter():
                              "%s. Got %r" % (accepted_types, frame))
 
         try:
-            finfo = ex.get_info(frame, lineno)
+            finfo = ex.get_info(frame, lineno, self.suppressed_vars)
 
             return self._format_frame(finfo)
         except Exception as exc:

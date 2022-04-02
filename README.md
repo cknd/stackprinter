@@ -56,7 +56,7 @@ File demo.py, line 6, in <lambda>
 
 TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
-I sometimes use this locally instead of a real debugger, but mostly it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
+I rarely use this locally instead of a real debugger, but it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
 
 By default, it tries to be somewhat polite about screen space (showing only a handful of source lines & the function header, and only the variables _in those lines_, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137) exactly how verbose things should be.
 
@@ -106,7 +106,19 @@ except:
     logger.exception('The front fell off.')  # Logs a rich traceback along with the given message
 ```
 
-For all the config options [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137).
+For all the config options [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149).
+The same config kwargs are accepted by `format()`, `show()` and `set_excepthook()`. They allow you to tweak the formatting, hide certain variables by name, skip variables in calls within certain files, and some other stuff.
+
+```python
+try:
+    something()
+except RuntimeError as exc:
+    stackprinter.show(exc, suppressed_vars=[r".*secret.*"],
+                           suppressed_paths=[r"lib/python.*/site-packages/boringstuff"],
+                           truncate_vals=9001)
+```
+
+
 
 ## Printing the current call stack
 To see your own thread's current call stack, call `show` or `format` anywhere outside of exception handling.

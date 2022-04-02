@@ -39,7 +39,8 @@ def format_summary(frames, style='plaintext', source_lines=1, reverse=False,
 
 def format_stack(frames, style='plaintext', source_lines=5,
                  show_signature=True, show_vals='like_source',
-                 truncate_vals=500, line_wrap=60, reverse=False, suppressed_paths=None):
+                 truncate_vals=500, line_wrap=60, reverse=False,
+                 suppressed_paths=None, suppressed_vars=[]):
     """
     Render a list of frames (or FrameInfo tuples)
 
@@ -60,7 +61,8 @@ def format_stack(frames, style='plaintext', source_lines=5,
                                       show_vals=show_vals,
                                       truncate_vals=truncate_vals,
                                       line_wrap=line_wrap,
-                                      suppressed_paths=suppressed_paths)
+                                      suppressed_paths=suppressed_paths,
+                                      suppressed_vars=suppressed_vars)
 
     verbose_formatter = get_formatter(style=style,
                                       source_lines=source_lines,
@@ -68,12 +70,13 @@ def format_stack(frames, style='plaintext', source_lines=5,
                                       show_vals=show_vals,
                                       truncate_vals=truncate_vals,
                                       line_wrap=line_wrap,
-                                      suppressed_paths=suppressed_paths)
+                                      suppressed_paths=suppressed_paths,
+                                      suppressed_vars=suppressed_vars)
 
     frame_msgs = []
     parent_is_boring = True
     for frame in frames:
-        fi = ex.get_info(frame)
+        fi = ex.get_info(frame, suppressed_vars=suppressed_vars)
         is_boring = match(fi.filename, suppressed_paths)
         if is_boring:
             if parent_is_boring:
@@ -111,7 +114,7 @@ def format_stack_from_frame(fr, add_summary=False, **kwargs):
 
 def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
                     reverse=False, suppressed_exceptions=[KeyboardInterrupt],
-                    **kwargs):
+                    suppressed_vars=[], **kwargs):
     """
     Format an exception traceback, including the exception message
 
@@ -149,6 +152,7 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
                                    style=style,
                                    add_summary=add_summary,
                                    reverse=reverse,
+                                   suppressed_vars=suppressed_vars,
                                    **kwargs)
 
             if style == 'plaintext':
@@ -161,7 +165,8 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
         # Now, actually do some formatting:
         parts = []
         if tb:
-            frameinfos = [ex.get_info(tb_) for tb_ in _walk_traceback(tb)]
+            frameinfos = [ex.get_info(tb_, suppressed_vars=suppressed_vars)
+                          for tb_ in _walk_traceback(tb)]
             if (suppressed_exceptions and
                 issubclass(etype, tuple(suppressed_exceptions))):
                 summary = format_summary(frameinfos, style=style,
