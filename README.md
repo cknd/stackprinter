@@ -106,13 +106,12 @@ except RuntimeError as exc:
     stackprinter.show(exc, suppressed_vars=[r".*secret.*"],
                            suppressed_paths=[r"lib/python.*/site-packages/boringstuff"],
                            truncate_vals=9001,
-                           style="darkbg2",
-                           )
+                           style="darkbg2")
 ```
 
 ### Integration with the standard `logging` module
 
-Through a bit of extra plumbing you can log errors with normal `logging` methods, without having to import `stackprinter` at the site of the logging call. So you can continue to have nice and simple error handlers like this...
+With a bit of extra plumbing you can log errors like this via the normal `logging` methods, without having to import `stackprinter` at the site of the logging call. So you can continue to write nice and simple error handlers like this...
 
 ```python
 logger = logging.getLogger()
@@ -144,7 +143,7 @@ except:
   ┆ TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'
 ```
 
-You can get this by adding a [custom formatter](https://docs.python.org/3/howto/logging-cookbook.html#customized-exception-formatting) to the logger once before using it.
+You can get this by adding a [custom formatter](https://docs.python.org/3/howto/logging-cookbook.html#customized-exception-formatting) to the logger before using it:
 
 ```python
 # Set up logging
