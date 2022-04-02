@@ -108,40 +108,8 @@ except RuntimeError as exc:
 ```
 
 
-It's also possible to integrate this neatly with standard logging calls [through a bit of extra plumbing](https://github.com/cknd/stackprinter/blob/master/demo_logging.py):
-
+It's also possible to integrate this neatly with standard logging calls through a bit of extra plumbing. The goal is to use `logging` calls from the standard library without explicitly importing `stackprinter` at the site of the logging call...
 ```python
-import logging
-
-
-## Setup
-import stackprinter
-
-class VerboseExceptionFormatter(logging.Formatter):
-    def formatException(self, exc_info):
-        msg = stackprinter.format(exc_info)
-        lines = msg.split('\n')
-        lines_indented = ["  ┆ " + line + "\n" for line in lines]
-        msg_indented = "".join(lines_indented)
-        return msg_indented
-
-def configure_logger(logger_name=None):
-    fmt = '%(asctime)s %(levelname)s: %(message)s'
-    formatter = VerboseExceptionFormatter(fmt)
-
-
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-
-    logger = logging.getLogger(logger_name)
-    logger.addHandler(handler)
-
-
-configure_logger("some_logger")
-
-
-## Use
-
 logger = logging.getLogger("some_logger")
 
 try:
@@ -151,7 +119,7 @@ except:
     logger.exception('My hovercraft is full of eels.')
 
 ```
-Output:
+...but getting an annotated traceback in the resulting log, still.
 ```
 2022-04-02 16:16:40,905 ERROR: My hovercraft is full of eels.
   ┆ File "demo_logging.py", line 56, in <module>
@@ -173,6 +141,35 @@ Output:
   ┆ TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'
 ```
 
+You can achieve this by [adding a custom formatter](https://docs.python.org/3/howto/logging-cookbook.html#customized-exception-formatting) to the logger before using it.
+
+```python
+# Logging setup
+import logging
+import stackprinter
+
+class VerboseExceptionFormatter(logging.Formatter):
+    def formatException(self, exc_info):
+        msg = stackprinter.format(exc_info)
+        lines = msg.split('\n')
+        lines_indented = ["  ┆ " + line + "\n" for line in lines]
+        msg_indented = "".join(lines_indented)
+        return msg_indented
+
+def configure_logger(logger_name=None):
+    fmt = '%(asctime)s %(levelname)s: %(message)s'
+    formatter = VerboseExceptionFormatter(fmt)
+
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+
+    logger = logging.getLogger(logger_name)
+    logger.addHandler(handler)
+
+configure_logger("some_logger")
+```
+See [demo_logging.py](https://github.com/cknd/stackprinter/blob/master/demo_logging.py) for a runnable example.
 
 ## Printing the current call stack
 To see your own thread's current call stack, call `show` or `format` anywhere outside of exception handling.
