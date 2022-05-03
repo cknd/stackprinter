@@ -58,7 +58,7 @@ TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
 I rarely use this locally instead of a real debugger, but it helps me sleep when my code runs somewhere where the only debug tool is a log file (though it's not a fully-grown [error monitoring system](https://sentry.io/welcome/)).
 
-By default, it tries to be somewhat polite about screen space (showing only a handful of source lines & the function header, and only the variables _in those lines_, and only (?) 500 characters per variable). You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137) exactly how verbose things should be.
+By default, it tries to be somewhat polite about screen space, showing only a few source lines & the function header, and only the variables _that appear in those lines_, and using only (?) 500 characters per variable. You can [configure](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149) exactly how verbose things should be.
 
 It outputs plain text normally, which is good for log files. There's also a color mode for some reason 🌈, with a few different color schemes for light and dark backgrounds. (The colors [track different variables](https://medium.com/@brianwill/making-semantic-highlighting-useful-9aeac92411df) instead of the language syntax.)
 
@@ -66,15 +66,15 @@ It outputs plain text normally, which is good for log files. There's also a colo
 
 # Usage
 
-## Exception logging
-To replace the default python crash printout, call `set_excepthook()` somewhere. This will print detailed stacktraces for any uncaught exception except KeyboardInterrupts (to stderr, by default). You could also [make this permanent for your python installation](#making-it-stick).
+## Option 1: Set and forget
+To replace the default python crash printout, call `set_excepthook()` somewhere once. Afterwards, any uncaught exception will be printed with an extended traceback (to stderr, by default). You could also [make this permanent for your python installation](#making-it-stick).
 
 ```python
 import stackprinter
 stackprinter.set_excepthook(style='darkbg2')  # for jupyter notebooks try style='lightbg'
 ```
-
-For more control, call [`show()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L154-L162) or [`format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L137) inside an `except` block. `show()` prints to stderr by default, `format()` returns a string, for custom logging.
+## Option 2: Call it selectively during exception handling
+For more control, call [`show()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L166-L183) or [`format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149) inside an `except` block. `show()` prints to stderr, `format()` returns a string, for custom logging.
 
 ```python
 try:
@@ -97,7 +97,7 @@ except RuntimeError as exc:
 
 ### Config options
 
-`format()`, `show()` and `set_excepthook()` accept a common set of keyword args. They allow you to tweak the formatting, hide certain variables by name, skip variables in calls within certain files, and some other stuff. For all the options [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149).
+`format()`, `show()` and `set_excepthook()` accept a common set of keyword args. They allow you to tweak the formatting, hide certain variables by name, skip variables in calls within certain files, and some other stuff. 
 
 ```python
 try:
@@ -108,8 +108,9 @@ except RuntimeError as exc:
                            truncate_vals=9001,
                            style="darkbg2")
 ```
+For all the options [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149).
 
-### Integration with the standard `logging` module
+### Option 3: Integrate with the standard `logging` module
 
 With a bit of extra plumbing you can log errors like this via the normal `logging` methods, without having to import `stackprinter` at the site of the logging call. So you can continue to write nice and simple error handlers like so...
 
