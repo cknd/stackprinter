@@ -1,6 +1,6 @@
 <img src="https://raw.githubusercontent.com/cknd/stackprinter/master/darkbg.png" width="500">
 
-[![Build Status](https://travis-ci.org/cknd/stackprinter.svg?branch=master)](https://travis-ci.org/cknd/stackprinter)
+[![build](https://github.com/cknd/stackprinter/actions/workflows/build.yml/badge.svg)](https://github.com/cknd/stackprinter/actions/workflows/build.yml)
 
 # Better tracebacks
 
