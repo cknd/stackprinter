@@ -25,7 +25,7 @@ def trace(*args, suppressed_paths=[], **formatter_kwargs):
     depth_limit: int (default: 20)
         How many nested calls will be followed
 
-    print_function: callable (default: sys.stderr.write)
+    print_function: callable (default: print)
         some function of your choice that accepts a string
 
     stop_on_exception: bool (default: True)
@@ -68,7 +68,7 @@ class TracePrinter():
     depth_limit: int (default: 20)
         How many nested calls will be followed
 
-    print_function: callable (default: sys.stderr.write)
+    print_function: callable (default: print)
         some function of your choice that accepts a string
 
     stop_on_exception: bool (default: True)
@@ -79,7 +79,7 @@ class TracePrinter():
     def __init__(self,
                  suppressed_paths=[],
                  depth_limit=20,
-                 print_function=sys.stderr.write,
+                 print_function=print,
                  stop_on_exception=True,
                  **formatter_kwargs):
 

@@ -175,6 +175,20 @@ def show(thing=None, file='stderr', **kwargs):
     **kwargs:
         See `format`
     """
+
+    # First, to handle a very rare edge case:
+    # Apparently there are environments where sys.stdout and stderr
+    # are None (like the pythonw.exe GUI https://stackoverflow.com/a/30313091).
+    # In those cases, it's not clear where our output should go unless the user
+    # specifies their own file for output. So I'll make a pragmatic assumption:
+    # If `show` is called with the default 'stderr' argument but we are in an
+    # environment where that stream doesn't exist, we're most likely running as
+    # part of a library that's imported in someone's GUI project and there just
+    # isn't any error logging (if there was, the user would've given us a file).
+    # So the least annoying behavior for us is to return silently, not crashing.
+    if file == 'stderr' and sys.stderr is None:
+        return
+
     if file == 'stderr':
         file = sys.stderr
     elif file == 'stdout':
@@ -227,6 +241,8 @@ def show_current_exception(file=sys.stderr, **kwargs):
     **kwargs:
         See `show`
     """
+    if file is None:
+        return # see explanation in `show()`
     print(format_current_exception(**kwargs), file=file)
 
 
