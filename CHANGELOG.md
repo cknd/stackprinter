@@ -1,3 +1,8 @@
+# 0.2.7 - August 12, 2022
+
+## Fixed
+- Degrade more gracefully in environments where the standard output streams (stdout, stderr) are not available, such as the `pythonw.exe` GUI. Concretely: 1) If stackprinter's `show()` function is called in such an environment and with default arguments, it will now return silently (doing nothing) instead of crashing. 2) the 'Traceprinter' toy now uses the built in print function (so that it doesn't try to access sys.stderr.write on import).
+
 # 0.2.6 - April 2, 2022
 
 ## Added
