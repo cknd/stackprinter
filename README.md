@@ -95,7 +95,7 @@ except RuntimeError as exc:
     logger.error('The front fell off.\n' + tb)
 ```
 
-### Config options
+## Config options
 
 `format()`, `show()` and `set_excepthook()` accept a common set of keyword args. They allow you to tweak the formatting, hide certain variables by name, skip variables in calls within certain files, and some other stuff. 
 
@@ -110,7 +110,7 @@ except RuntimeError as exc:
 ```
 For all the options [see the docstring of `format()`](https://github.com/cknd/stackprinter/blob/master/stackprinter/__init__.py#L28-L149).
 
-### Option 3: Integrate with the standard `logging` module
+## Option 3: Integrate with the standard `logging` module
 
 With a bit of extra plumbing you can log errors like this via the normal `logging` methods, without having to import `stackprinter` at the site of the logging call. So you can continue to write nice and simple error handlers like so...
 
