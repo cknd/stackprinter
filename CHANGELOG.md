@@ -1,3 +1,8 @@
+# 0.2.8 - August 25, 2022
+
+## Fixed
+Replace deprecated distutils.LooseVersion by packaging.version
+
 # 0.2.7 - August 12, 2022
 
 ## Fixed
