@@ -1,5 +1,4 @@
 import os
-import pprint
 
 from stackprinter.extraction import UnresolvedAttribute
 from stackprinter.utils import inspect_callable
@@ -9,8 +8,8 @@ try:
 except ImportError:
     np = False
 else:
-    from distutils.version import LooseVersion
-    is_modern_numpy = LooseVersion(np.__version__) >= LooseVersion('1.14')
+    from packaging import version
+    is_modern_numpy = version.parse(np.__version__) >= version.parse('1.14')
     # numpy's array2string method gained some new keywords after version 1.13
 
 MAXLEN_DICT_KEY_REPR = 25  # truncate dict keys to this nr of characters
