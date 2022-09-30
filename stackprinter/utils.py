@@ -32,20 +32,12 @@ def inspect_callable(f):
     else:
         return None, None, None, None
 
-    try:
-        qname = f.__qualname__
-    except AttributeError:
-        qname = None
+    qname = getattr(f, '__qualname__', None)
 
-    try:
-        filepath = code.co_filename
-    except AttributeError:
-        filepath = None
-
-    try:
-        ln = code.co_firstlineno
-    except AttributeError:
-        ln = None
+    # under pypy, builtin code object (like: [].append.__func__.__code__)
+    # have no co_filename and co_firstlineno
+    filepath = getattr(code, 'co_filename', None)
+    ln = getattr(code, 'co_firstlineno', None)
         
     return qname, filepath, owner, ln
 
