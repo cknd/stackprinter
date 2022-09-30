@@ -242,7 +242,7 @@ class FrameFormatter():
                 if callable(value):
                     qualified_name, path, *_ = inspect_callable(value)
                     is_builtin = value.__class__.__name__ == 'builtin_function_or_method'
-                    is_boring = is_builtin or (qualified_name == name)
+                    is_boring = is_builtin or (qualified_name == name) or (path is None)
                     is_suppressed = match(path, self.suppressed_paths)
                     return is_boring or is_suppressed
                 return False
