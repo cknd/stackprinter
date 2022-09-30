@@ -37,8 +37,16 @@ def inspect_callable(f):
     except AttributeError:
         qname = None
 
-    filepath = code.co_filename
-    ln = code.co_firstlineno
+    try:
+        filepath = code.co_filename
+    except AttributeError:
+        filepath = None
+
+    try:
+        ln = code.co_firstlineno
+    except AttributeError:
+        ln = None
+        
     return qname, filepath, owner, ln
 
 
