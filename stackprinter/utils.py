@@ -38,7 +38,7 @@ def inspect_callable(f):
     # have no co_filename and co_firstlineno
     filepath = getattr(code, 'co_filename', None)
     ln = getattr(code, 'co_firstlineno', None)
-        
+
     return qname, filepath, owner, ln
 
 
