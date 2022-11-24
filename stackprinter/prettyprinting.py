@@ -7,10 +7,6 @@ try:
     import numpy as np
 except ImportError:
     np = False
-else:
-    from packaging import version
-    is_modern_numpy = version.parse(np.__version__) >= version.parse('1.14')
-    # numpy's array2string method gained some new keywords after version 1.13
 
 MAXLEN_DICT_KEY_REPR = 25  # truncate dict keys to this nr of characters
 
@@ -193,10 +189,11 @@ def format_array(arr, minimize=False):
 
     suffix = ')'
 
-    if is_modern_numpy:
+    try:
         array_rep = np.array2string(arr, max_line_width=9000, threshold=50,
                                     edgeitems=2, prefix=prefix, suffix=suffix)
-    else:
+    except TypeError:
+        # some super old numpy versions (< 1.14) don't accept all these arguments
         array_rep = np.array2string(arr, max_line_width=9000, prefix=prefix)
 
     if minimize and (len(array_rep) > 50 or arr.ndim > 1):
