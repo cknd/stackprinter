@@ -2,7 +2,8 @@ import random
 import colorsys
 
 
-__all__ = ['color', 'darkbg', 'darkbg2', 'darkbg3',
+__all__ = ['plaintext', 'color',
+           'darkbg', 'darkbg2', 'darkbg3',
            'lightbg', 'lightbg2', 'lightbg3']
 
 class ColorScheme():
@@ -10,8 +11,17 @@ class ColorScheme():
     def __getitem__(self, name):
         raise NotImplemented
 
-    def get_random(self):
+    def get_random(self, seed, highlight):
         raise NotImplemented
+
+
+class plaintext(ColorScheme):
+
+    def __getitem__(self, name):
+        return "%s"
+
+    def get_random(self, seed, highlight):
+        return "%s"
 
 
 class HslScheme(ColorScheme):

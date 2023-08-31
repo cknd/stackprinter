@@ -11,10 +11,7 @@ from stackprinter.frame_formatting import FrameFormatter, ColorfulFrameFormatter
 
 
 def get_formatter(style, **kwargs):
-    if style in ['plaintext', 'plain']:
-        return FrameFormatter(**kwargs)
-    else:
-        return ColorfulFrameFormatter(style, **kwargs)
+    return ColorfulFrameFormatter(style, **kwargs)
 
 
 def format_summary(frames, style='plaintext', source_lines=1, reverse=False,
@@ -155,12 +152,9 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
                                    suppressed_vars=suppressed_vars,
                                    **kwargs)
 
-            if style == 'plaintext':
-                msg +=  chain_hint
-            else:
-                sc = getattr(colorschemes, style)()
-                clr = sc['exception_type']
-                msg += clr % chain_hint
+            sc = getattr(colorschemes, style)()
+            clr = sc['exception_type']
+            msg += clr % chain_hint
 
         # Now, actually do some formatting:
         parts = []
@@ -226,15 +220,12 @@ def format_exception_message(etype, evalue, tb=None, style='plaintext'):
     if val_str:
         type_str += ": "
 
-    if style == 'plaintext':
-        return type_str + val_str
-    else:
-        sc = getattr(colorschemes, style)()
+    sc = getattr(colorschemes, style)()
 
-        clr_head = sc['exception_type']
-        clr_msg = sc['exception_msg']
+    clr_head = sc['exception_type']
+    clr_msg = sc['exception_msg']
 
-        return clr_head % type_str + clr_msg % val_str
+    return clr_head % type_str + clr_msg % val_str
 
 
 def _walk_traceback(tb):
