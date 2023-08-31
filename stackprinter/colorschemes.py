@@ -24,11 +24,41 @@ class plaintext(ColorScheme):
         return "%s"
 
 
-class HslScheme(ColorScheme):
-    colors = {}
+class ansi(ColorScheme):
+    colors = {
+        'exception_type': '31',
+        'exception_msg': '31',
+        'highlight': '1;31',
+        'header': '0',
+        'lineno': '1',
+        'arrow_lineno': '1',
+        'dots': '0',
+        'source_bold': '0',
+        'source_default': '0',
+        'source_comment': '0',
+        'var_invisible': '0',
+    }
 
     def __init__(self):
         self.rng = random.Random()
+
+    def __getitem__(self, name):
+        return self._ansi_tpl(self.colors[name])
+
+    def get_random(self, seed, highlight):
+        self.rng.seed(seed)
+        random_code = str(self.rng.randint(32, 36))
+        if self.rng.choice((True, False)):
+            random_code = "1;" + random_code
+        return self._ansi_tpl(random_code)
+
+    @staticmethod
+    def _ansi_tpl(color_code):
+        return f"\u001b[{color_code}m%s\u001b[0m"
+
+
+class HslScheme(ColorScheme):
+    colors = {}
 
     def __getitem__(self, name):
         return self._ansi_tpl(*self.colors[name])
@@ -216,6 +246,22 @@ color = darkbg2
 
 
 if __name__ == '__main__':
+    scheme = darkbg3()
+    for attr in [
+        'exception_type',
+        'exception_msg',
+        'highlight',
+        'header',
+        'lineno',
+        'arrow_lineno',
+        'dots',
+        'source_bold',
+        'source_default',
+        'source_comment',
+        'var_invisible',
+    ]:
+        print(scheme[attr] % attr)
+    exit()
     import numpy as np
     hsl_scheme = HslScheme()
 
