@@ -6,7 +6,7 @@ import traceback
 
 import stackprinter.extraction as ex
 import stackprinter.colorschemes as colorschemes
-from stackprinter.utils import match, get_ansi_tpl
+from stackprinter.utils import match
 from stackprinter.frame_formatting import FrameFormatter, ColorfulFrameFormatter
 
 
@@ -158,8 +158,8 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
             if style == 'plaintext':
                 msg +=  chain_hint
             else:
-                sc = getattr(colorschemes, style)
-                clr = get_ansi_tpl(*sc.colors['exception_type'])
+                sc = getattr(colorschemes, style)()
+                clr = sc['exception_type']
                 msg += clr % chain_hint
 
         # Now, actually do some formatting:
@@ -229,10 +229,10 @@ def format_exception_message(etype, evalue, tb=None, style='plaintext'):
     if style == 'plaintext':
         return type_str + val_str
     else:
-        sc = getattr(colorschemes, style)
+        sc = getattr(colorschemes, style)()
 
-        clr_head = get_ansi_tpl(*sc.colors['exception_type'])
-        clr_msg = get_ansi_tpl(*sc.colors['exception_msg'])
+        clr_head = sc['exception_type']
+        clr_msg = sc['exception_msg']
 
         return clr_head % type_str + clr_msg % val_str
 

@@ -1,4 +1,5 @@
 import random
+import colorsys
 
 
 __all__ = ['color', 'darkbg', 'darkbg2', 'darkbg3',
@@ -20,14 +21,26 @@ class HslScheme(ColorScheme):
         self.rng = random.Random()
 
     def __getitem__(self, name):
-        return self.colors[name]
+        return self._ansi_tpl(*self.colors[name])
 
     def get_random(self, seed, highlight):
         self.rng.seed(seed)
-        return self._random_color(highlight)
+        return self._ansi_tpl(*self._random_color(highlight))
 
     def _random_color(self, highlight):
         raise NotImplemented
+
+    @staticmethod
+    def _ansi_tpl(hue, sat, val, bold=False):
+        r_, g_, b_ = colorsys.hsv_to_rgb(hue, sat, val)
+        r = int(round(r_*5))
+        g = int(round(g_*5))
+        b = int(round(b_*5))
+        point = 16 + 36 * r + 6 * g + b
+
+        bold_tp = '1;' if bold else ''
+        code_tpl = ('\u001b[%s38;5;%dm' % (bold_tp, point)) + '%s\u001b[0m'
+        return code_tpl
 
 
 class darkbg(HslScheme):
@@ -194,14 +207,14 @@ color = darkbg2
 
 if __name__ == '__main__':
     import numpy as np
-    from utils import get_ansi_tpl
+    hsl_scheme = HslScheme()
 
     for hue in np.arange(0,1.05,0.05):
         print('\n\nhue %.2f\nsat' % hue)
         for sat in np.arange(0,1.05,0.05):
             print('%.2f  ' % sat, end='')
             for val in np.arange(0,1.05,0.05):
-                tpl = get_ansi_tpl(hue, sat, val)
+                tpl = hsl_scheme._ansi_tpl(hue, sat, val)
                 # number = " (%.1f %.1f %.1f)" % (hue, sat, val)
                 number = ' %.2f' % val
                 print(tpl % number, end='')
