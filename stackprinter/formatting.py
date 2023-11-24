@@ -123,6 +123,11 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
     if etype is None:
         etype = type(None)
 
+    if etype.__name__ == 'ExceptionGroup':
+        # Exception groups (new in py 3.11) aren't supported so far,
+        # but at least we fall back on the default message.
+        return ''.join(traceback.format_exception(etype, evalue, tb))
+
     msg = ''
     try:
         # First, recursively format any chained exceptions (exceptions
