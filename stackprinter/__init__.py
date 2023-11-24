@@ -123,7 +123,7 @@ def format(thing=None, **kwargs):
         or
         `suppressed_paths=[re.compile(r"lib/python.*/site-packages/numpy")]`
 
-    suppressed_exception_types: list of exception classes
+    suppressed_exceptions: list of exception classes
         Show less verbose formatting for exceptions in this list.
         By default, this list is `[KeyboardInterrupt]`. Set to `[]`
         to force verbose formatting even on a keyboard interrupt.
