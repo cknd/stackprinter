@@ -60,6 +60,9 @@ class ansi(ColorScheme):
 class HslScheme(ColorScheme):
     colors = {}
 
+    def __init__(self):
+        self.rng = random.Random()
+
     def __getitem__(self, name):
         return self._ansi_tpl(*self.colors[name])
 
