@@ -63,6 +63,12 @@ def spam_spam_spam(val):
         eels = "here is a "\
                "multi line "\
                "string"
+
+        foo = f"""here is
+               {outer_scope_thing["and"]}
+               a multi-line f-string,
+               even with quotes in it
+               """
         # np.reshape(bla, 9000)
         try:
             bla.nonexistant_attribute
