@@ -144,10 +144,19 @@ def _tokenize(source_lines):
     head_s = None
     head_e = None
     name_end = -2
+    acceptable_multiline_tokens = [tokenize.STRING]
+    if hasattr(tokenize, "FSTRING_START"):
+        # we're >= python 3.12
+        acceptable_multiline_tokens.extend([
+            tokenize.FSTRING_START,
+            tokenize.FSTRING_MIDDLE,
+            tokenize.FSTRING_END])
+
     for ttype, string, (sline, scol), (eline, ecol), line in tokenizer:
         sline -= 1  # we deal in line indices counting from 0
         eline -= 1
-        if ttype != tokenize.STRING:
+
+        if ttype not in acceptable_multiline_tokens:
             assert sline == eline, "Can't accept non-string multiline tokens"
 
         if ttype == tokenize.NAME:
