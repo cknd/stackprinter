@@ -82,6 +82,9 @@ def format(thing=None, **kwargs):
     style: string
         'plaintext' (default): Output just text
 
+        'ansi': Enable colors, using basic ansi sequences. It is compatible
+            with light and dark background, based on terminal settings.
+
         'darkbg', 'darkbg2', 'darkbg3', 'lightbg', 'lightbg2', 'lightbg3':
             Enable colors, for use in terminals that support 256 ansi
             colors or in jupyter notebooks (or even with `ansi2html`)

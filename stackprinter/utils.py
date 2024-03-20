@@ -1,7 +1,5 @@
 import re
-import types
 import inspect
-import colorsys
 from collections import OrderedDict
 
 
@@ -79,22 +77,3 @@ def trim_source(source_map, context):
         trimmed_source_map[ln] = [[snippet0] + meta0] + remaining_line
 
     return trimmed_source_map
-
-
-
-def get_ansi_tpl(hue, sat, val, bold=False):
-
-    # r_, g_, b_ = colorsys.hls_to_rgb(hue, val, sat)
-    r_, g_, b_ = colorsys.hsv_to_rgb(hue, sat, val)
-    r = int(round(r_*5))
-    g = int(round(g_*5))
-    b = int(round(b_*5))
-    point = 16 + 36 * r + 6 * g + b
-    # print(r,g,b,point)
-
-    bold_tp = '1;' if bold else ''
-    code_tpl = ('\u001b[%s38;5;%dm' % (bold_tp, point)) + '%s\u001b[0m'
-    return code_tpl
-
-
-

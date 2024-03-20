@@ -7,7 +7,7 @@ import stackprinter.source_inspection as sc
 import stackprinter.colorschemes as colorschemes
 
 from stackprinter.prettyprinting import format_value
-from stackprinter.utils import inspect_callable, match, trim_source, get_ansi_tpl
+from stackprinter.utils import inspect_callable, match, trim_source
 
 class FrameFormatter():
     headline_tpl = 'File "%s", line %s, in %s\n'
@@ -283,7 +283,7 @@ class ColorfulFrameFormatter(FrameFormatter):
         super().__init__(**kwargs)
 
     def tpl(self, name):
-        return get_ansi_tpl(*self.colors[name])
+        return self.colors[name]
 
     def _format_frame(self, fi):
         basepath, filename = os.path.split(fi.filename)
@@ -319,8 +319,7 @@ class ColorfulFrameFormatter(FrameFormatter):
                     if snippet not in colormap:
                         line += default_tpl % snippet
                     else:
-                        hue, sat, val, bold = colormap[snippet]
-                        var_tpl = get_ansi_tpl(hue, sat, val, bold)
+                        var_tpl = colormap[snippet]
                         line += var_tpl % snippet
                 elif ttype == sc.CALL:
                     line += bold_tp % snippet
@@ -340,8 +339,7 @@ class ColorfulFrameFormatter(FrameFormatter):
                                    truncation=self.truncate_vals,
                                    wrap=self.line_wrap)
             assign_str = self.val_tpl % (name, val_str)
-            hue, sat, val, bold = colormap.get(name, self.colors['var_invisible'])
-            clr_str = get_ansi_tpl(hue, sat, val, bold) % assign_str
+            clr_str = colormap.get(name, self.colors['var_invisible']) % assign_str
             msgs.append(clr_str)
         if len(msgs) > 0:
             return self.sep_vars + '\n' + ''.join(msgs) + self.sep_vars + '\n\n'
