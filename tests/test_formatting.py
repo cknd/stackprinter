@@ -58,7 +58,7 @@ def test_none_value_formatting():
 
 
 def test_tb_with_none_lineno():
-    # Regression for ARE-2675 / Python 3.12+ compat.
+    # Regression Python 3.12+ compat.
     # Since CPython 3.12, `tb.tb_lineno` (and `frame.f_lineno`) return None when
     # the instruction at tb_lasti has no line mapping. Stackprinter used to pass
     # that None straight into source_inspection.annotate() and blow up on
