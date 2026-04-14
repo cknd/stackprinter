@@ -83,6 +83,14 @@ def get_info(tb_or_frame, lineno=None, suppressed_vars=[]):
     else:
         raise ValueError('Cant inspect this: ' + repr(tb_or_frame))
 
+    # Since CPython 3.12, both `tb.tb_lineno` and `frame.f_lineno` can return
+    # None when the current instruction has no line mapping (for example at
+    # certain async suspension points, or on synthetic RESUME/CACHE opcodes).
+    # Fall back to the function's first line so we can still render a frame
+    # rather than crashing downstream formatters with a None lineno.
+    if lineno is None:
+        lineno = frame.f_code.co_firstlineno
+
     filename = inspect.getsourcefile(frame) or inspect.getfile(frame)
     function = frame.f_code.co_name
 
