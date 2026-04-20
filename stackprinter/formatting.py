@@ -205,7 +205,8 @@ def format_exc_info(etype, evalue, tb, style='plaintext', add_summary='auto',
     except Exception as exc:
         import os
         if 'PY_STACKPRINTER_DEBUG' in os.environ:
-            raise
+            import pdb
+            pdb.post_mortem(exc.__traceback__)
 
         our_tb = traceback.format_exception(exc.__class__,
                                             exc,
