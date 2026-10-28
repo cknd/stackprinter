@@ -151,7 +151,7 @@ def format(thing=None, **kwargs):
         return fmt.format_stack_from_frame(thing, **kwargs)
     elif isinstance(thing, Thread):
         return format_thread(thing, **kwargs)
-    elif isinstance(thing, Exception):
+    elif isinstance(thing, BaseException):
         exc_info = (thing.__class__, thing, thing.__traceback__)
         return format(exc_info, **kwargs)
     elif _is_exc_info(thing):
