@@ -88,3 +88,61 @@ def test_tb_with_none_lineno():
     output = stackprinter.format((ValueError, ValueError("boom"), tb))
     assert "target" in output
     assert "ValueError: boom" in output
+
+
+def _assert_exception_group_format(use_subclass=False, as_tuple=False,
+                                   with_traceback=False):
+    import builtins
+    import traceback
+
+    import pytest
+
+    group_type = getattr(builtins, 'ExceptionGroup', None)
+    if group_type is None:
+        pytest.skip('Exception groups require Python 3.11 or newer')
+
+    outer_type = group_type
+    if use_subclass:
+        class CustomGroup(group_type):
+            pass
+        outer_type = CustomGroup
+
+    exc = outer_type('outer', [
+        ValueError('first nested error'),
+        group_type('inner', [TypeError('deeply nested error')]),
+    ])
+    if with_traceback:
+        try:
+            raise exc
+        except Exception:
+            pass
+
+    thing = (type(exc), exc, exc.__traceback__) if as_tuple else exc
+    expected = ''.join(traceback.format_exception(
+        type(exc), exc, exc.__traceback__))
+    assert stackprinter.format(thing, show_vals=None) == expected
+
+
+def test_exception_group_subclass_instance():
+    _assert_exception_group_format(use_subclass=True)
+
+
+def test_exception_group_subclass_exc_info():
+    _assert_exception_group_format(use_subclass=True, as_tuple=True)
+
+
+def test_exception_group_subclass_traceback():
+    _assert_exception_group_format(use_subclass=True, with_traceback=True)
+
+
+def test_builtin_exception_group_instance():
+    _assert_exception_group_format()
+
+
+def test_builtin_exception_group_exc_info():
+    _assert_exception_group_format(as_tuple=True)
+
+
+def test_ordinary_exception_instance():
+    output = stackprinter.format(ValueError('ordinary error'), show_vals=None)
+    assert output == 'ValueError: ordinary error'
